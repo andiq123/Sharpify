@@ -5,16 +5,12 @@ import (
 	"strings"
 )
 
-// TargetTypedNew converts to target-typed new expressions (C# 9+)
 type TargetTypedNew struct {
 	BaseVersionedRule
 }
 
 func NewTargetTypedNew() *TargetTypedNew {
 	return &TargetTypedNew{
-		// Marked unsafe: new() without type reduces readability - you lose context
-		// e.g., "private List<string> _items = new();" - what type is being created?
-		// The explicit type on the right side provides valuable documentation
 		BaseVersionedRule: BaseVersionedRule{minVersion: CSharp9, safe: false},
 	}
 }
@@ -28,7 +24,6 @@ func (r *TargetTypedNew) Description() string {
 }
 
 func (r *TargetTypedNew) Apply(content string) (string, bool) {
-	// Match field/property declarations: Type name = new Type(...)
 	pattern := regexp.MustCompile(`(\b(?:private|public|protected|internal|static|readonly|\s)+)([A-Z][a-zA-Z0-9_]*(?:<[^>]+>)?)\s+(\w+)\s*=\s*new\s+([A-Z][a-zA-Z0-9_]*(?:<[^>]+>)?)\s*\(([^)]*)\)\s*;`)
 
 	changed := false

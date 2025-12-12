@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// StringInterpolation converts string.Format to interpolated strings (C# 6+)
 type StringInterpolation struct {
 	BaseVersionedRule
 }
@@ -26,7 +25,6 @@ func (r *StringInterpolation) Description() string {
 }
 
 func (r *StringInterpolation) Apply(content string) (string, bool) {
-	// Match string.Format("...", arg1, arg2, ...)
 	pattern := regexp.MustCompile(`string\.Format\s*\(\s*"([^"]+)"\s*,\s*([^)]+)\)`)
 
 	if !pattern.MatchString(content) {
@@ -43,10 +41,8 @@ func (r *StringInterpolation) Apply(content string) (string, bool) {
 		formatStr := submatches[1]
 		argsStr := submatches[2]
 
-		// Parse arguments
 		args := r.parseArgs(argsStr)
 
-		// Replace {0}, {1}, etc. with actual arguments
 		newStr := formatStr
 		for i, arg := range args {
 			placeholder := "{" + strconv.Itoa(i) + "}"

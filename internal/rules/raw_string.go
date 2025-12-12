@@ -1,7 +1,5 @@
 package rules
 
-// RawStringLiteral suggests raw string literals (C# 11+)
-// This rule is disabled as it requires careful manual review
 type RawStringLiteral struct {
 	BaseVersionedRule
 }
@@ -21,7 +19,5 @@ func (r *RawStringLiteral) Description() string {
 }
 
 func (r *RawStringLiteral) Apply(content string) (string, bool) {
-	// This transformation is complex and can break strings
-	// Disabled for safety - users should manually review
 	return content, false
 }

@@ -4,7 +4,6 @@ import (
 	"regexp"
 )
 
-// NullPropagation converts null checks to null-conditional operators (C# 6+)
 type NullPropagation struct {
 	BaseVersionedRule
 }
@@ -27,7 +26,6 @@ func (r *NullPropagation) Apply(content string) (string, bool) {
 	changed := false
 	result := content
 
-	// Pattern: x != null ? x.Property : null -> x?.Property
 	pattern := regexp.MustCompile(`(\w+)\s*!=\s*null\s*\?\s*(\w+)\.(\w+)\s*:\s*null`)
 	matches := pattern.FindAllStringSubmatch(result, -1)
 	for _, m := range matches {

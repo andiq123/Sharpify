@@ -4,53 +4,6 @@ import (
 	"regexp"
 )
 
-// AsyncDisposable converts IDisposable to IAsyncDisposable pattern (C# 8+)
-type AsyncDisposable struct {
-	BaseVersionedRule
-}
-
-func NewAsyncDisposable() *AsyncDisposable {
-	return &AsyncDisposable{
-		BaseVersionedRule: BaseVersionedRule{minVersion: CSharp8, safe: false},
-	}
-}
-
-func (r *AsyncDisposable) Name() string {
-	return "async-disposable"
-}
-
-func (r *AsyncDisposable) Description() string {
-	return "Suggest IAsyncDisposable for async resources (C# 8+) [manual review]"
-}
-
-func (r *AsyncDisposable) Apply(content string) (string, bool) {
-	return content, false
-}
-
-// UsingAwait converts using to await using for async disposables (C# 8+)
-type UsingAwait struct {
-	BaseVersionedRule
-}
-
-func NewUsingAwait() *UsingAwait {
-	return &UsingAwait{
-		BaseVersionedRule: BaseVersionedRule{minVersion: CSharp8, safe: false},
-	}
-}
-
-func (r *UsingAwait) Name() string {
-	return "await-using"
-}
-
-func (r *UsingAwait) Description() string {
-	return "Use await using for async disposables (C# 8+) [manual review]"
-}
-
-func (r *UsingAwait) Apply(content string) (string, bool) {
-	return content, false
-}
-
-// IndexRange uses Index and Range types (C# 8+)
 type IndexRange struct {
 	BaseVersionedRule
 }
@@ -66,18 +19,15 @@ func (r *IndexRange) Name() string {
 }
 
 func (r *IndexRange) Description() string {
-	return "Use Index (^) and Range (..) operators (C# 8+)"
+	return "Use Index (^) operator for last element access (C# 8+)"
 }
 
 func (r *IndexRange) Apply(content string) (string, bool) {
 	changed := false
 	result := content
 
-	// Pattern: arr[arr.Length - 1] -> arr[^1]
-	// This is MORE readable - ^1 is a well-known C# idiom for "last element"
-	// Go doesn't support backreferences, so we match and compare manually
-	pattern1 := regexp.MustCompile(`(\w+)\s*\[\s*(\w+)\.Length\s*-\s*(\d+)\s*\]`)
-	matches := pattern1.FindAllStringSubmatch(result, -1)
+	pattern := regexp.MustCompile(`(\w+)\s*\[\s*(\w+)\.Length\s*-\s*(\d+)\s*\]`)
+	matches := pattern.FindAllStringSubmatch(result, -1)
 	for _, m := range matches {
 		if len(m) >= 4 && m[1] == m[2] {
 			old := m[0]
@@ -86,11 +36,6 @@ func (r *IndexRange) Apply(content string) (string, bool) {
 			changed = true
 		}
 	}
-
-	// NOT converting Substring to range syntax:
-	// str.Substring(0, n) -> str[..n] - less readable, Substring is clearer
-	// str.Substring(n) -> str[n..] - less readable, Substring is clearer
-	// The range syntax is less familiar to most developers
 
 	return result, changed
 }

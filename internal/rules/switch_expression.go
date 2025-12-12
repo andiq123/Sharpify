@@ -1,6 +1,5 @@
 package rules
 
-// SwitchExpression placeholder - complex transformation requires AST
 type SwitchExpression struct {
 	BaseVersionedRule
 }
@@ -20,7 +19,5 @@ func (r *SwitchExpression) Description() string {
 }
 
 func (r *SwitchExpression) Apply(content string) (string, bool) {
-	// Switch expression conversion is complex and requires AST analysis
-	// to ensure correctness. Disabled for safety.
 	return content, false
 }

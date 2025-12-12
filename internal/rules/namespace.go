@@ -5,7 +5,6 @@ import (
 	"strings"
 )
 
-// FileScopedNamespace converts block-scoped namespaces to file-scoped (C# 10+)
 type FileScopedNamespace struct {
 	BaseVersionedRule
 }
@@ -25,19 +24,16 @@ func (r *FileScopedNamespace) Description() string {
 }
 
 func (r *FileScopedNamespace) Apply(content string) (string, bool) {
-	// Check if already file-scoped
 	fileScopedPattern := regexp.MustCompile(`(?m)^namespace\s+[\w.]+\s*;`)
 	if fileScopedPattern.MatchString(content) {
 		return content, false
 	}
 
-	// Match traditional namespace declaration with opening brace
 	pattern := regexp.MustCompile(`(?m)^(\s*namespace\s+[\w.]+)\s*\n?\s*\{`)
 	if !pattern.MatchString(content) {
 		return content, false
 	}
 
-	// Only convert if there's exactly one namespace in the file
 	allNamespaces := regexp.MustCompile(`(?m)^(\s*)namespace\s+[\w.]+`)
 	matches := allNamespaces.FindAllString(content, -1)
 	if len(matches) != 1 {

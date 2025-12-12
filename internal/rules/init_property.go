@@ -47,26 +47,18 @@ func (r *RequiredProperty) Description() string {
 func (r *RequiredProperty) Apply(content string) (string, bool) {
 	changed := false
 
-	// Match public properties with { get; set; } or { get; init; } that:
-	// - Are non-nullable reference types (no ? suffix)
-	// - Don't have a default value (no = ...)
-	// - Don't already have required modifier
 	pattern := regexp.MustCompile(`(?m)^(\s*)(public\s+)(string|object|[A-Z][a-zA-Z0-9_]*(?:<[^>]+>)?)\s+(\w+)\s*\{\s*get;\s*(?:set|init);\s*\}(\s*)$`)
 
 	result := pattern.ReplaceAllStringFunc(content, func(match string) string {
-		// Skip if already has required modifier
 		if regexp.MustCompile(`public\s+required\s+`).MatchString(match) {
 			return match
 		}
-		// Skip if it's a nullable type (ends with ?)
 		if regexp.MustCompile(`\?\s+\w+\s*\{`).MatchString(match) {
 			return match
 		}
-		// Skip if it has a default value
 		if regexp.MustCompile(`=\s*[^;]+;`).MatchString(match) {
 			return match
 		}
-		// Skip primitive value types that have default values
 		if regexp.MustCompile(`\b(int|long|double|float|bool|byte|char|decimal|short|uint|ulong|ushort|sbyte|DateTime|Guid)\s+\w+\s*\{`).MatchString(match) {
 			return match
 		}
@@ -77,7 +69,6 @@ func (r *RequiredProperty) Apply(content string) (string, bool) {
 		}
 
 		changed = true
-		// Insert "required " after "public "
 		return submatches[1] + submatches[2] + "required " + submatches[3] + " " + submatches[4] + " { get; set; }" + submatches[5]
 	})
 

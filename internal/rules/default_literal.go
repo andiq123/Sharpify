@@ -5,7 +5,6 @@ import (
 	"strings"
 )
 
-// DefaultLiteral converts default(T) to default literal (C# 7.1+)
 type DefaultLiteral struct {
 	BaseVersionedRule
 }
@@ -28,8 +27,6 @@ func (r *DefaultLiteral) Apply(content string) (string, bool) {
 	changed := false
 	result := content
 
-	// Pattern: Type name = default(Type) -> Type name = default;
-	// Go doesn't support backreferences, match and compare manually
 	pattern1 := regexp.MustCompile(`(\w+(?:<[^>]+>)?)\s+(\w+)\s*=\s*default\s*\(\s*(\w+(?:<[^>]+>)?)\s*\)\s*;`)
 	matches := pattern1.FindAllStringSubmatch(result, -1)
 	for _, m := range matches {
@@ -41,7 +38,6 @@ func (r *DefaultLiteral) Apply(content string) (string, bool) {
 		}
 	}
 
-	// Pattern: return default(Type) -> return default
 	pattern2 := regexp.MustCompile(`return\s+default\s*\(\s*\w+(?:<[^>]+>)?\s*\)\s*;`)
 	if pattern2.MatchString(result) {
 		result = pattern2.ReplaceAllString(result, "return default;")
