@@ -29,6 +29,7 @@ func NewRegistry() *RuleRegistry {
 	r.Register(rules.NewDefaultLiteral())
 	r.Register(rules.NewTupleDeconstruction())
 	r.Register(rules.NewDiscardVariable())
+	r.Register(rules.NewSpanSuggestion())
 
 	// C# 8+ rules
 	r.Register(rules.NewNullCoalescing())
@@ -49,6 +50,7 @@ func NewRegistry() *RuleRegistry {
 	// C# 11+ rules
 	r.Register(rules.NewRawStringLiteral())
 	r.Register(rules.NewRequiredProperty())
+	r.Register(rules.NewListPattern())
 
 	// C# 12+ rules
 	r.Register(rules.NewCollectionExpression())
