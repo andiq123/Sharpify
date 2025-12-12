@@ -1,23 +1,13 @@
 # Sharpify
 
-A fast, interactive CLI tool to modernize legacy C# codebases. Upgrade your code to use the latest C# features without breaking existing logic.
-
-```
-  ____  _                       _  __
- / ___|| |__   __ _ _ __ _ __ (_)/ _|_   _
- \___ \| '_ \ / _' | '__| '_ \| | |_| | | |
-  ___) | | | | (_| | |  | |_) | |  _| |_| |
- |____/|_| |_|\__,_|_|  | .__/|_|_|  \__, |
-                        |_|          |___/
-```
+A fast CLI tool to modernize legacy C# codebases. Upgrade your code to use the latest C# features without breaking existing logic.
 
 ## Features
 
-- **Interactive Mode** - Visual menus to select target C# version and rules
-- **Version-Aware** - Only applies transformations compatible with your target .NET version
+- **Simple Interface** - Run, Settings, Rules, Exit
+- **Persistent Settings** - Configure once, run instantly
+- **Version-Aware** - Applies transformations compatible with your target .NET version
 - **Safe by Default** - Conservative transformations that preserve logic
-- **Backup System** - Automatic backups before any changes
-- **File Preview** - Review changes file-by-file with diff view
 - **Fast** - Written in Go for maximum performance
 
 ## Installation
@@ -30,7 +20,7 @@ go install github.com/andiq123/sharpify@latest
 
 ### Download Binary
 
-Download the latest release from [GitHub Releases](https://github.com/andiq123/Sharpify/releases).
+Download from [GitHub Releases](https://github.com/andiq123/Sharpify/releases).
 
 | Platform | Download |
 |----------|----------|
@@ -41,89 +31,91 @@ Download the latest release from [GitHub Releases](https://github.com/andiq123/S
 
 ### Interactive Mode (Default)
 
-Simply run `sharpify` to start the interactive mode:
-
 ```bash
 sharpify
 ```
 
-You'll be guided through:
-1. Selecting your target C# version (.NET 5-9)
-2. Choosing which transformation rules to apply
-3. Reviewing and applying changes file-by-file
+Menu:
+- **Run** - Scan and improve C# files in current directory
+- **Settings** - Configure C# version, safe mode, backup
+- **Rules** - View available transformation rules
+- **Exit**
+
+Settings are saved to `~/.sharpify.json` and persist across sessions.
 
 ### Batch Mode
 
-For CI/CD or scripting:
-
 ```bash
-# Preview changes
-sharpify -b --dry-run ./src
-
-# Apply all changes
-sharpify -b ./src
-
-# Apply specific rules only
-sharpify -b --rules file-scoped-namespace,pattern-matching ./src
-
-# Verbose output
-sharpify -b --verbose ./MyProject
+sharpify -b                           # Improve current directory
+sharpify -b ./src                     # Improve specific path
+sharpify -b --dry-run ./src           # Preview changes
+sharpify -b --rules var-pattern ./src # Apply specific rules
+sharpify -b --verbose ./src           # Detailed output
 ```
 
-## Transformation Rules
+## Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| C# Version | 12 | Target C# version (6-13) |
+| Safe Mode | On | Only apply safe transformations |
+| Backup | Off | Create backups before changes |
+
+## Transformation Rules (25 total)
 
 ### C# 6+ (.NET Framework 4.6+)
-
-| Rule | Description |
-|------|-------------|
-| `expression-body` | Convert simple methods/properties to expression-bodied members |
-| `string-interpolation` | Convert `string.Format()` to `$"..."` |
-| `nameof-expression` | Use `nameof()` for `ArgumentNullException` parameters |
-| `null-propagation` | Use `?.` null-conditional operator |
+| Rule | Description | Safe |
+|------|-------------|------|
+| `expression-body` | Expression-bodied members | Yes |
+| `string-interpolation` | `string.Format()` to `$"..."` | Yes |
+| `nameof-expression` | `nameof()` for exceptions | Yes |
+| `null-propagation` | `?.` operator | Yes |
+| `var-pattern` | `var` for obvious types | Yes |
 
 ### C# 7+ (.NET Core 2.0+)
-
-| Rule | Description |
-|------|-------------|
-| `pattern-matching` | Use `is Type` pattern matching |
-| `default-literal` | Convert `default(T)` to `default` |
-| `tuple-deconstruction` | Convert `Tuple<T1,T2>` to `(T1, T2)` |
+| Rule | Description | Safe |
+|------|-------------|------|
+| `pattern-matching` | `is Type` pattern | Yes |
+| `default-literal` | `default(T)` to `default` | Yes |
+| `tuple-deconstruction` | `Tuple<>` to `()` | Yes |
+| `span-suggestion` | Optimize string operations | No |
 
 ### C# 8+ (.NET Core 3.0+)
-
-| Rule | Description |
-|------|-------------|
-| `null-coalescing-assignment` | Use `??=` operator |
-| `index-range` | Use `^1` and `[..]` syntax |
+| Rule | Description | Safe |
+|------|-------------|------|
+| `null-coalescing-assignment` | `??=` operator | Yes |
+| `index-range` | `^1` for last element | Yes |
 
 ### C# 9+ (.NET 5+)
-
-| Rule | Description |
-|------|-------------|
-| `target-typed-new` | Convert `Type x = new Type()` to `Type x = new()` |
-| `pattern-matching-null` | Use `is null` and `is not null` |
+| Rule | Description | Safe |
+|------|-------------|------|
+| `target-typed-new` | `new()` syntax | No |
+| `pattern-matching-null` | `is null` / `is not null` | Yes |
 
 ### C# 10+ (.NET 6+)
+| Rule | Description | Safe |
+|------|-------------|------|
+| `file-scoped-namespace` | `namespace X;` | Yes |
+| `implicit-using` | Remove implicit usings | No |
 
-| Rule | Description |
-|------|-------------|
-| `file-scoped-namespace` | Convert `namespace X { }` to `namespace X;` |
-| `implicit-using` | Remove usings covered by implicit usings |
+### C# 11+ (.NET 7+)
+| Rule | Description | Safe |
+|------|-------------|------|
+| `list-pattern` | `is []` for empty check | No |
+| `required-property` | Add `required` modifier | No |
 
 ### C# 12+ (.NET 8+)
+| Rule | Description | Safe |
+|------|-------------|------|
+| `collection-expression` | `[]` syntax | Yes |
+| `primary-constructor` | Primary constructors | No |
 
-| Rule | Description |
-|------|-------------|
-| `collection-expression` | Convert `new List<T>()` to `[]` |
-
-## Examples
+## Example
 
 ### Before
-
 ```csharp
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace MyApp.Services
 {
@@ -142,21 +134,11 @@ namespace MyApp.Services
         {
             return _users[_users.Length - 1];
         }
-
-        public void Process(string name)
-        {
-            if (name == null)
-            {
-                throw new ArgumentNullException("name");
-            }
-            Console.WriteLine(string.Format("Hello {0}", name));
-        }
     }
 }
 ```
 
-### After (targeting C# 12 / .NET 8)
-
+### After (C# 12)
 ```csharp
 namespace MyApp.Services;
 
@@ -175,41 +157,16 @@ public class UserService
     {
         return _users[^1];
     }
-
-    public void Process(string name)
-    {
-        if (name is null)
-        {
-            throw new ArgumentNullException(nameof(name));
-        }
-        Console.WriteLine($"Hello {name}");
-    }
 }
 ```
 
-## Safety
-
-Sharpify prioritizes **safe transformations** that won't change your code's behavior:
-
-- **Safe rules** (enabled by default): Guaranteed to preserve logic
-- **Experimental rules** (opt-in): May require manual review
-
-Use Settings in interactive mode to toggle between safe-only and all rules.
-
 ## Backups
 
-Before modifying any file, Sharpify creates a backup in:
-
+When enabled, backups are saved to:
 ```
 .sharpify-backup/YYYYMMDD-HHMMSS/
 ```
 
-You can restore original files from this directory if needed.
-
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+MIT
