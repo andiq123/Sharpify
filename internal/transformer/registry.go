@@ -52,6 +52,7 @@ func NewRegistry() *RuleRegistry {
 
 	// C# 12+ rules
 	r.Register(rules.NewCollectionExpression())
+	r.Register(rules.NewPrimaryConstructor())
 
 	return r
 }

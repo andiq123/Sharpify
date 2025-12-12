@@ -22,12 +22,6 @@ A fast, interactive CLI tool to modernize legacy C# codebases. Upgrade your code
 
 ## Installation
 
-### Homebrew (macOS/Linux)
-
-```bash
-brew install andiq123/tap/sharpify
-```
-
 ### Go Install
 
 ```bash
@@ -40,12 +34,8 @@ Download the latest release from [GitHub Releases](https://github.com/andiq123/S
 
 | Platform | Download |
 |----------|----------|
-| Linux (amd64) | `sharpify-linux-amd64` |
-| Linux (arm64) | `sharpify-linux-arm64` |
-| macOS (Intel) | `sharpify-darwin-amd64` |
-| macOS (Apple Silicon) | `sharpify-darwin-arm64` |
-| Windows (amd64) | `sharpify-windows-amd64.exe` |
-| Windows (arm64) | `sharpify-windows-arm64.exe` |
+| macOS (Apple Silicon) | `sharpify-macos-arm64` |
+| Windows | `sharpify-windows-amd64.exe` |
 
 ## Usage
 

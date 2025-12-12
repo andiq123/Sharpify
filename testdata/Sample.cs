@@ -4,11 +4,26 @@ public class UserService
 {
     private readonly List<string> _users;
     private readonly ILogger _logger;
+    private static Dictionary<string, int> _cache = new();
 
     public UserService(ILogger logger)
     {
-        _users = [];
+        _users = new List<string>();
         _logger = logger;
+    }
+
+    public void Initialize()
+    {
+        List<string> items = [];
+        string[] names = ["John", "Jane"];
+        int[] numbers = [1, 2, 3];
+        var empty = Array.Empty<string>();
+
+        var permissions = new List<PermissionInfo>
+        {
+            new PermissionInfo { Name = "Permission1", CanRead = true, CanWrite = false, CanDelete = false },
+            new PermissionInfo { Name = "Permission2", CanRead = true, CanWrite = true, CanDelete = false }
+        };
     }
 
     public string GetUserName(int id)
@@ -36,7 +51,7 @@ public class UserService
 
     public string GetValue(string input)
     {
-        if (input is null) input = "default";
+        input ??= "default";
         return input;
     }
 
@@ -76,6 +91,14 @@ public class UserService
     {
         return ("John", 25);
     }
+}
+
+public class PermissionInfo
+{
+    public string Name { get; set; }
+    public bool CanRead { get; set; }
+    public bool CanWrite { get; set; }
+    public bool CanDelete { get; set; }
 }
 
 public interface ILogger

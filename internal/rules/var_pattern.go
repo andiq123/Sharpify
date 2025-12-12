@@ -5,7 +5,6 @@ import (
 	"strings"
 )
 
-// VarPattern converts explicit type declarations to var where appropriate
 type VarPattern struct {
 	BaseVersionedRule
 }
@@ -25,8 +24,7 @@ func (r *VarPattern) Description() string {
 }
 
 func (r *VarPattern) Apply(content string) (string, bool) {
-	// Match: Type variable = new Type(...) -> var variable = new Type(...)
-	pattern := regexp.MustCompile(`\b([A-Z][a-zA-Z0-9_]*(?:<[^>]+>)?)\s+(\w+)\s*=\s*new\s+([A-Z][a-zA-Z0-9_]*(?:<[^>]+>)?)\s*([(\[{])`)
+	pattern := regexp.MustCompile(`(\s+)([A-Z][a-zA-Z0-9_]*(?:<[^>]+>)?)\s+(\w+)\s*=\s*new\s+([A-Z][a-zA-Z0-9_]*(?:<[^>]+>)?)\s*([(\[{])`)
 
 	if !pattern.MatchString(content) {
 		return content, false
@@ -35,19 +33,49 @@ func (r *VarPattern) Apply(content string) (string, bool) {
 	changed := false
 	result := pattern.ReplaceAllStringFunc(content, func(match string) string {
 		submatches := pattern.FindStringSubmatch(match)
-		if len(submatches) >= 5 {
-			leftType := submatches[1]
-			varName := submatches[2]
-			rightType := submatches[3]
-			suffix := submatches[4]
+		if len(submatches) >= 6 {
+			whitespace := submatches[1]
+			leftType := submatches[2]
+			varName := submatches[3]
+			rightType := submatches[4]
+			suffix := submatches[5]
+
+			if r.isFieldOrProperty(whitespace, content, match) {
+				return match
+			}
 
 			if strings.TrimSpace(leftType) == strings.TrimSpace(rightType) {
 				changed = true
-				return "var " + varName + " = new " + rightType + suffix
+				return whitespace + "var " + varName + " = new " + rightType + suffix
 			}
 		}
 		return match
 	})
 
 	return result, changed
+}
+
+func (r *VarPattern) isFieldOrProperty(whitespace string, content string, match string) bool {
+	idx := strings.Index(content, match)
+	if idx == -1 {
+		return false
+	}
+
+	lineStart := strings.LastIndex(content[:idx], "\n")
+	if lineStart == -1 {
+		lineStart = 0
+	} else {
+		lineStart++
+	}
+
+	linePrefix := content[lineStart:idx]
+
+	fieldModifiers := []string{"private", "public", "protected", "internal", "static", "readonly", "const"}
+	for _, mod := range fieldModifiers {
+		if strings.Contains(linePrefix, mod) {
+			return true
+		}
+	}
+
+	return false
 }

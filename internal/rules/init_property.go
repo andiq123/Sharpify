@@ -4,8 +4,6 @@ import (
 	"regexp"
 )
 
-// InitOnlyProperty converts { get; set; } to { get; init; } for immutable types (C# 9+)
-// This is a suggestion rule - requires manual review as it changes semantics
 type InitOnlyProperty struct {
 	BaseVersionedRule
 }
@@ -25,12 +23,9 @@ func (r *InitOnlyProperty) Description() string {
 }
 
 func (r *InitOnlyProperty) Apply(content string) (string, bool) {
-	// This changes semantics - properties become immutable after construction
-	// Disabled for safety - users should manually review
 	return content, false
 }
 
-// RequiredProperty adds required modifier to properties (C# 11+)
 type RequiredProperty struct {
 	BaseVersionedRule
 }
@@ -50,11 +45,9 @@ func (r *RequiredProperty) Description() string {
 }
 
 func (r *RequiredProperty) Apply(content string) (string, bool) {
-	// This changes semantics - requires careful review
 	return content, false
 }
 
-// RecordType converts simple DTOs to records (C# 9+)
 type RecordType struct {
 	BaseVersionedRule
 }
@@ -74,12 +67,9 @@ func (r *RecordType) Description() string {
 }
 
 func (r *RecordType) Apply(content string) (string, bool) {
-	// Record conversion changes equality semantics
-	// Disabled for safety - users should manually review
 	return content, false
 }
 
-// GlobalUsing converts common usings to global usings (C# 10+)
 type GlobalUsing struct {
 	BaseVersionedRule
 }
@@ -99,18 +89,16 @@ func (r *GlobalUsing) Description() string {
 }
 
 func (r *GlobalUsing) Apply(content string) (string, bool) {
-	// Global usings require project-wide changes
 	return content, false
 }
 
-// ImplicitUsing removes usings covered by implicit usings (C# 10+ / .NET 6+)
 type ImplicitUsing struct {
 	BaseVersionedRule
 }
 
 func NewImplicitUsing() *ImplicitUsing {
 	return &ImplicitUsing{
-		BaseVersionedRule: BaseVersionedRule{minVersion: CSharp10, safe: true},
+		BaseVersionedRule: BaseVersionedRule{minVersion: CSharp10, safe: false},
 	}
 }
 
@@ -119,7 +107,7 @@ func (r *ImplicitUsing) Name() string {
 }
 
 func (r *ImplicitUsing) Description() string {
-	return "Remove usings covered by implicit usings (.NET 6+)"
+	return "Remove usings covered by implicit usings (.NET 6+) [manual review]"
 }
 
 var implicitUsings = []string{

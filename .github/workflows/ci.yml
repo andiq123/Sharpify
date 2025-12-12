@@ -12,8 +12,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        go: ["1.23", "1.24"]
+        os: [macos-latest, windows-latest]
+        go: ["1.23"]
 
     steps:
       - name: Checkout
@@ -43,7 +43,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.23"
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
