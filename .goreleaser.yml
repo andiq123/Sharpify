@@ -52,38 +52,9 @@ changelog:
 
 release:
   github:
-    owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
-    name: sharpify
+    owner: andiq123
+    name: Sharpify
   draft: false
   prerelease: auto
   mode: replace
   name_template: "{{.ProjectName}} v{{.Version}}"
-
-brews:
-  - name: sharpify
-    repository:
-      owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    folder: Formula
-    homepage: "https://github.com/{{ .Env.GITHUB_REPOSITORY_OWNER }}/sharpify"
-    description: "CLI tool to modernize legacy C# code"
-    license: "MIT"
-    skip_upload: auto
-    test: |
-      system "#{bin}/sharpify", "--version"
-    install: |
-      bin.install "sharpify"
-
-nfpms:
-  - id: packages
-    package_name: sharpify
-    vendor: Sharpify
-    homepage: "https://github.com/{{ .Env.GITHUB_REPOSITORY_OWNER }}/sharpify"
-    maintainer: "Sharpify <noreply@example.com>"
-    description: "CLI tool to modernize legacy C# code"
-    license: MIT
-    formats:
-      - deb
-      - rpm
-    bindir: /usr/bin
