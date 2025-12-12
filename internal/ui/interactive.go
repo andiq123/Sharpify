@@ -87,23 +87,140 @@ func (im *InteractiveMode) showMainMenu() string {
 }
 
 func (im *InteractiveMode) runImprove() {
-	cwd, _ := os.Getwd()
+	// Determine working directory - use saved path or current directory
+	workingDir := im.config.WorkingPath
+	if workingDir == "" {
+		workingDir, _ = os.Getwd()
+	}
 
-	files, err := im.scanner.Scan(cwd)
+	// Scan for C# files
+	files, err := im.scanner.Scan(workingDir)
 	if err != nil {
 		fmt.Println(ErrorStyle.Render("Scan failed: " + err.Error()))
 		return
 	}
 
+	// Feature 1: If no files found, prompt for alternative path
 	if len(files) == 0 {
-		fmt.Println(WarningStyle.Render("No C# files found"))
+		fmt.Println(WarningStyle.Render("No C# files found in: " + workingDir))
+
+		var selectPath bool
+		_ = huh.NewConfirm().
+			Title("Select a different path?").
+			Value(&selectPath).
+			Run()
+
+		if !selectPath {
+			return
+		}
+
+		var newPath string
+		_ = huh.NewInput().
+			Title("Enter path to C# project").
+			Placeholder(workingDir).
+			Value(&newPath).
+			Run()
+
+		if newPath == "" {
+			fmt.Println("Cancelled")
+			return
+		}
+
+		// Expand ~ to home directory
+		if len(newPath) > 0 && newPath[0] == '~' {
+			home, _ := os.UserHomeDir()
+			newPath = filepath.Join(home, newPath[1:])
+		}
+
+		// Resolve to absolute path
+		absPath, err := filepath.Abs(newPath)
+		if err != nil {
+			fmt.Println(ErrorStyle.Render("Invalid path: " + err.Error()))
+			return
+		}
+
+		// Check if path exists
+		if _, err := os.Stat(absPath); os.IsNotExist(err) {
+			fmt.Println(ErrorStyle.Render("Path does not exist: " + absPath))
+			return
+		}
+
+		// Scan the new path
+		files, err = im.scanner.Scan(absPath)
+		if err != nil {
+			fmt.Println(ErrorStyle.Render("Scan failed: " + err.Error()))
+			return
+		}
+
+		if len(files) == 0 {
+			fmt.Println(WarningStyle.Render("No C# files found in: " + absPath))
+			return
+		}
+
+		// Save the working path for next time
+		workingDir = absPath
+		im.config.WorkingPath = absPath
+		_ = im.config.Save()
+		fmt.Println(SuccessStyle.Render("Path saved for future sessions"))
+	}
+
+	fmt.Printf("\nFound %d file(s) in %s\n", len(files), workingDir)
+
+	// Feature 2: Show rules preview and allow toggling before run
+	availableRules := im.registry.GetByVersion(im.config.GetVersion(), im.config.SafeOnly)
+
+	if len(availableRules) == 0 {
+		fmt.Println(WarningStyle.Render("No rules available for current settings"))
 		return
 	}
 
-	fmt.Printf("\nFound %d file(s)\n", len(files))
+	// Build options for multi-select with current enabled/disabled state
+	var ruleOptions []huh.Option[string]
+	var selectedRules []string
 
-	availableRules := im.registry.GetByVersion(im.config.GetVersion(), im.config.SafeOnly)
-	t := transformer.New(availableRules)
+	for _, r := range availableRules {
+		ruleOptions = append(ruleOptions, huh.NewOption(r.Name()+" - "+r.Description(), r.Name()))
+		// Pre-select rules that are NOT disabled
+		if !im.config.IsRuleDisabled(r.Name()) {
+			selectedRules = append(selectedRules, r.Name())
+		}
+	}
+
+	fmt.Println()
+	fmt.Println(TitleStyle.Render("Configure Rules"))
+	fmt.Println(SubtitleStyle.Render("Select which rules to apply (space to toggle, enter to confirm)"))
+
+	_ = huh.NewMultiSelect[string]().
+		Title("Enabled Rules").
+		Options(ruleOptions...).
+		Value(&selectedRules).
+		Run()
+
+	// Feature 3: Update and persist rule enabled/disabled state
+	for _, r := range availableRules {
+		isSelected := false
+		for _, sel := range selectedRules {
+			if sel == r.Name() {
+				isSelected = true
+				break
+			}
+		}
+		// SetRuleDisabled(name, disabled) - if selected, it's NOT disabled
+		im.config.SetRuleDisabled(r.Name(), !isSelected)
+	}
+	_ = im.config.Save()
+
+	// Filter to only enabled rules
+	enabledRules := im.config.GetEnabledRules(availableRules)
+
+	if len(enabledRules) == 0 {
+		fmt.Println(WarningStyle.Render("No rules enabled - nothing to do"))
+		return
+	}
+
+	fmt.Printf("\nApplying %d rule(s)...\n", len(enabledRules))
+
+	t := transformer.New(enabledRules)
 	results := t.TransformAll(files)
 
 	var changed []transformer.Result
@@ -120,7 +237,7 @@ func (im *InteractiveMode) runImprove() {
 
 	fmt.Printf("\n%d file(s) to update:\n", len(changed))
 	for _, r := range changed {
-		rel, _ := filepath.Rel(cwd, r.File.Path)
+		rel, _ := filepath.Rel(workingDir, r.File.Path)
 		fmt.Printf("  %s\n", rel)
 		for _, rule := range r.AppliedRules {
 			fmt.Printf("    %s\n", RuleStyle.Render("+ "+rule.Description))
@@ -139,7 +256,7 @@ func (im *InteractiveMode) runImprove() {
 	}
 
 	if im.config.BackupEnabled {
-		im.backupMgr = backup.New(cwd)
+		im.backupMgr = backup.New(workingDir)
 		for _, r := range changed {
 			_ = im.backupMgr.Backup(r.File.Path, r.File.Content)
 		}

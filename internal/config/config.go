@@ -9,9 +9,11 @@ import (
 )
 
 type Config struct {
-	TargetVersion string `json:"targetVersion"`
-	SafeOnly      bool   `json:"safeOnly"`
-	BackupEnabled bool   `json:"backupEnabled"`
+	TargetVersion string   `json:"targetVersion"`
+	SafeOnly      bool     `json:"safeOnly"`
+	BackupEnabled bool     `json:"backupEnabled"`
+	DisabledRules []string `json:"disabledRules,omitempty"`
+	WorkingPath   string   `json:"workingPath,omitempty"`
 }
 
 func DefaultConfig() *Config {
@@ -19,6 +21,8 @@ func DefaultConfig() *Config {
 		TargetVersion: "12",
 		SafeOnly:      true,
 		BackupEnabled: false,
+		DisabledRules: []string{},
+		WorkingPath:   "",
 	}
 }
 
@@ -88,3 +92,42 @@ func (c *Config) SetVersion(v rules.CSharpVersion) {
 		c.TargetVersion = "12"
 	}
 }
+
+// IsRuleDisabled checks if a rule is in the disabled list
+func (c *Config) IsRuleDisabled(name string) bool {
+	for _, r := range c.DisabledRules {
+		if r == name {
+			return true
+		}
+	}
+	return false
+}
+
+// SetRuleDisabled adds or removes a rule from the disabled list
+func (c *Config) SetRuleDisabled(name string, disabled bool) {
+	if disabled {
+		if !c.IsRuleDisabled(name) {
+			c.DisabledRules = append(c.DisabledRules, name)
+		}
+	} else {
+		newList := make([]string, 0, len(c.DisabledRules))
+		for _, r := range c.DisabledRules {
+			if r != name {
+				newList = append(newList, r)
+			}
+		}
+		c.DisabledRules = newList
+	}
+}
+
+// GetEnabledRules returns the list of rules filtering out disabled ones
+func (c *Config) GetEnabledRules(allRules []rules.Rule) []rules.Rule {
+	result := make([]rules.Rule, 0, len(allRules))
+	for _, r := range allRules {
+		if !c.IsRuleDisabled(r.Name()) {
+			result = append(result, r)
+		}
+	}
+	return result
+}
+
