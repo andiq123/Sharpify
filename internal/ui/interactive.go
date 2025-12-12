@@ -166,38 +166,54 @@ func (im *InteractiveMode) runImprove() {
 
 	fmt.Printf("\nFound %d file(s) in %s\n", len(files), workingDir)
 
-	// Feature 2: Show rules preview and allow toggling before run
-	availableRules := im.registry.GetByVersion(im.config.GetVersion(), im.config.SafeOnly)
+	// Feature 2: Show ALL rules preview and allow toggling before run
+	// Get ALL version-compatible rules (not filtered by safety)
+	allRules := im.registry.GetByVersion(im.config.GetVersion(), false)
 
-	if len(availableRules) == 0 {
+	if len(allRules) == 0 {
 		fmt.Println(WarningStyle.Render("No rules available for current settings"))
 		return
 	}
 
-	// Build options for multi-select with current enabled/disabled state
+	// Build options for multi-select with visual indicators
 	var ruleOptions []huh.Option[string]
 	var selectedRules []string
 
-	for _, r := range availableRules {
-		ruleOptions = append(ruleOptions, huh.NewOption(r.Name()+" - "+r.Description(), r.Name()))
-		// Pre-select rules that are NOT disabled
+	for _, r := range allRules {
+		vr := r.(rules.VersionedRule)
+
+		// Add visual indicator for safe vs unsafe
+		var indicator string
+		if vr.IsSafe() {
+			indicator = SuccessStyle.Render("✓")
+		} else {
+			indicator = WarningStyle.Render("⚠")
+		}
+
+		label := fmt.Sprintf("%s %s - %s", indicator, r.Name(), r.Description())
+		ruleOptions = append(ruleOptions, huh.NewOption(label, r.Name()))
+
+		// Pre-selection: if safeOnly mode, only pre-select safe rules
+		// Otherwise pre-select all rules that aren't explicitly disabled
 		if !im.config.IsRuleDisabled(r.Name()) {
-			selectedRules = append(selectedRules, r.Name())
+			if !im.config.SafeOnly || vr.IsSafe() {
+				selectedRules = append(selectedRules, r.Name())
+			}
 		}
 	}
 
 	fmt.Println()
 	fmt.Println(TitleStyle.Render("Configure Rules"))
-	fmt.Println(SubtitleStyle.Render("Select which rules to apply (space to toggle, enter to confirm)"))
+	fmt.Println(SubtitleStyle.Render("✓ safe  ⚠ opt-in (may need review) | space to toggle, enter to confirm"))
 
 	_ = huh.NewMultiSelect[string]().
-		Title("Enabled Rules").
+		Title("Rules to Apply").
 		Options(ruleOptions...).
 		Value(&selectedRules).
 		Run()
 
 	// Feature 3: Update and persist rule enabled/disabled state
-	for _, r := range availableRules {
+	for _, r := range allRules {
 		isSelected := false
 		for _, sel := range selectedRules {
 			if sel == r.Name() {
@@ -211,7 +227,7 @@ func (im *InteractiveMode) runImprove() {
 	_ = im.config.Save()
 
 	// Filter to only enabled rules
-	enabledRules := im.config.GetEnabledRules(availableRules)
+	enabledRules := im.config.GetEnabledRules(allRules)
 
 	if len(enabledRules) == 0 {
 		fmt.Println(WarningStyle.Render("No rules enabled - nothing to do"))
