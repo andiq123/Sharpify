@@ -20,9 +20,11 @@ func NewRegistry() *RuleRegistry {
 	// C# 6+ rules
 	r.Register(rules.NewExpressionBody())
 	r.Register(rules.NewStringInterpolation())
+	r.Register(rules.NewStringConcatToInterpolation())
 	r.Register(rules.NewNameofExpression())
 	r.Register(rules.NewNullPropagation())
 	r.Register(rules.NewVarPattern())
+	r.Register(rules.NewStopwatchStartNew())
 
 	// C# 7+ rules
 	r.Register(rules.NewPatternMatching())
