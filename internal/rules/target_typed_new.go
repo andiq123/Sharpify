@@ -12,7 +12,10 @@ type TargetTypedNew struct {
 
 func NewTargetTypedNew() *TargetTypedNew {
 	return &TargetTypedNew{
-		BaseVersionedRule: BaseVersionedRule{minVersion: CSharp9, safe: true},
+		// Marked unsafe: new() without type reduces readability - you lose context
+		// e.g., "private List<string> _items = new();" - what type is being created?
+		// The explicit type on the right side provides valuable documentation
+		BaseVersionedRule: BaseVersionedRule{minVersion: CSharp9, safe: false},
 	}
 }
 

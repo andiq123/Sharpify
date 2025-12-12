@@ -74,6 +74,7 @@ func (r *IndexRange) Apply(content string) (string, bool) {
 	result := content
 
 	// Pattern: arr[arr.Length - 1] -> arr[^1]
+	// This is MORE readable - ^1 is a well-known C# idiom for "last element"
 	// Go doesn't support backreferences, so we match and compare manually
 	pattern1 := regexp.MustCompile(`(\w+)\s*\[\s*(\w+)\.Length\s*-\s*(\d+)\s*\]`)
 	matches := pattern1.FindAllStringSubmatch(result, -1)
@@ -86,19 +87,10 @@ func (r *IndexRange) Apply(content string) (string, bool) {
 		}
 	}
 
-	// Pattern: str.Substring(0, n) -> str[..n]
-	pattern2 := regexp.MustCompile(`(\w+)\.Substring\s*\(\s*0\s*,\s*(\w+)\s*\)`)
-	if pattern2.MatchString(result) {
-		result = pattern2.ReplaceAllString(result, "${1}[..${2}]")
-		changed = true
-	}
-
-	// Pattern: str.Substring(n) -> str[n..]
-	pattern3 := regexp.MustCompile(`(\w+)\.Substring\s*\(\s*(\w+)\s*\)`)
-	if pattern3.MatchString(result) {
-		result = pattern3.ReplaceAllString(result, "${1}[${2}..]")
-		changed = true
-	}
+	// NOT converting Substring to range syntax:
+	// str.Substring(0, n) -> str[..n] - less readable, Substring is clearer
+	// str.Substring(n) -> str[n..] - less readable, Substring is clearer
+	// The range syntax is less familiar to most developers
 
 	return result, changed
 }
