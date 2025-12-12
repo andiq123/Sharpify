@@ -1,9 +1,12 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	"github.com/andiq123/sharpify/internal/backup"
 	"github.com/andiq123/sharpify/internal/config"
@@ -18,21 +21,57 @@ type InteractiveMode struct {
 	scanner   *scanner.CSharpScanner
 	config    *config.Config
 	backupMgr *backup.Manager
+	ctx       context.Context
+	cancel    context.CancelFunc
 }
 
 func NewInteractive() *InteractiveMode {
-	return &InteractiveMode{
+	// Load config but clear the working path - always start fresh
+	cfg := config.Load()
+	cfg.WorkingPath = "" // Don't remember last path
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	im := &InteractiveMode{
 		registry: transformer.NewRegistry(),
 		scanner:  scanner.New(),
-		config:   config.Load(),
+		config:   cfg,
+		ctx:      ctx,
+		cancel:   cancel,
 	}
+
+	// Setup Ctrl+C handler
+	im.setupSignalHandler()
+
+	return im
+}
+
+func (im *InteractiveMode) setupSignalHandler() {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-sigChan
+		fmt.Println("\n" + SubtitleStyle.Render("Goodbye! 👋"))
+		im.cancel()
+		os.Exit(0)
+	}()
 }
 
 func (im *InteractiveMode) Run() error {
 	fmt.Println(Banner())
+	fmt.Println(SubtitleStyle.Render("  Press Ctrl+C anytime to exit"))
+	fmt.Println()
 	im.printStatus()
 
 	for {
+		// Check if context was cancelled
+		select {
+		case <-im.ctx.Done():
+			return nil
+		default:
+		}
+
 		action := im.showMainMenu()
 
 		switch action {
@@ -42,7 +81,8 @@ func (im *InteractiveMode) Run() error {
 			im.showSettings()
 		case "rules":
 			im.showRules()
-		case "quit":
+		case "quit", "":
+			fmt.Println(SubtitleStyle.Render("Goodbye! 👋"))
 			return nil
 		}
 	}
@@ -71,69 +111,54 @@ func (im *InteractiveMode) showMainMenu() string {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
-				Title("Sharpify").
+				Title("What would you like to do?").
 				Options(
-					huh.NewOption("Run", "run"),
-					huh.NewOption("Settings", "settings"),
-					huh.NewOption("Rules", "rules"),
-					huh.NewOption("Exit", "quit"),
+					huh.NewOption("▶ Run  - Scan and improve C# code", "run"),
+					huh.NewOption("⚙ Settings  - Configure version and options", "settings"),
+					huh.NewOption("📋 Rules  - View available transformations", "rules"),
+					huh.NewOption("✕ Exit  - Quit Sharpify", "quit"),
 				).
 				Value(&action),
 		),
 	)
 
-	_ = form.Run()
+	if err := form.Run(); err != nil {
+		return "quit" // Ctrl+C or error - exit gracefully
+	}
 	return action
 }
 
 func (im *InteractiveMode) runImprove() {
-	// Determine working directory - use saved path or current directory
-	workingDir := im.config.WorkingPath
-	if workingDir == "" {
-		workingDir, _ = os.Getwd()
-	}
+	// Always ask for path - get current directory as default suggestion
+	currentDir, _ := os.Getwd()
 
-	// Scan for C# files
-	files, err := im.scanner.Scan(workingDir)
+	fmt.Println()
+	fmt.Println(TitleStyle.Render("📂 Select Project Path"))
+	fmt.Println(SubtitleStyle.Render("Press Enter to use current directory, or type a new path"))
+
+	var inputPath string
+	err := huh.NewInput().
+		Title("Path to C# project").
+		Placeholder(currentDir + " (current)").
+		Value(&inputPath).
+		Run()
+
 	if err != nil {
-		fmt.Println(ErrorStyle.Render("Scan failed: " + err.Error()))
+		// Ctrl+C pressed
 		return
 	}
 
-	// Feature 1: If no files found, prompt for alternative path
-	if len(files) == 0 {
-		fmt.Println(WarningStyle.Render("No C# files found in: " + workingDir))
-
-		var selectPath bool
-		_ = huh.NewConfirm().
-			Title("Select a different path?").
-			Value(&selectPath).
-			Run()
-
-		if !selectPath {
-			return
-		}
-
-		var newPath string
-		_ = huh.NewInput().
-			Title("Enter path to C# project").
-			Placeholder(workingDir).
-			Value(&newPath).
-			Run()
-
-		if newPath == "" {
-			fmt.Println("Cancelled")
-			return
-		}
-
+	// Use current directory if empty input
+	workingDir := currentDir
+	if inputPath != "" {
 		// Expand ~ to home directory
-		if len(newPath) > 0 && newPath[0] == '~' {
+		if len(inputPath) > 0 && inputPath[0] == '~' {
 			home, _ := os.UserHomeDir()
-			newPath = filepath.Join(home, newPath[1:])
+			inputPath = filepath.Join(home, inputPath[1:])
 		}
 
 		// Resolve to absolute path
-		absPath, err := filepath.Abs(newPath)
+		absPath, err := filepath.Abs(inputPath)
 		if err != nil {
 			fmt.Println(ErrorStyle.Render("Invalid path: " + err.Error()))
 			return
@@ -145,26 +170,25 @@ func (im *InteractiveMode) runImprove() {
 			return
 		}
 
-		// Scan the new path
-		files, err = im.scanner.Scan(absPath)
-		if err != nil {
-			fmt.Println(ErrorStyle.Render("Scan failed: " + err.Error()))
-			return
-		}
-
-		if len(files) == 0 {
-			fmt.Println(WarningStyle.Render("No C# files found in: " + absPath))
-			return
-		}
-
-		// Save the working path for next time
 		workingDir = absPath
-		im.config.WorkingPath = absPath
-		_ = im.config.Save()
-		fmt.Println(SuccessStyle.Render("Path saved for future sessions"))
 	}
 
-	fmt.Printf("\nFound %d file(s) in %s\n", len(files), workingDir)
+	fmt.Printf("\n%s %s\n", SubtitleStyle.Render("Scanning:"), workingDir)
+
+	// Scan for C# files
+	files, err := im.scanner.Scan(workingDir)
+	if err != nil {
+		fmt.Println(ErrorStyle.Render("Scan failed: " + err.Error()))
+		return
+	}
+
+	if len(files) == 0 {
+		fmt.Println(WarningStyle.Render("No C# files found in: " + workingDir))
+		fmt.Println(SubtitleStyle.Render("Tip: Make sure the path contains .cs files"))
+		return
+	}
+
+	fmt.Printf("\n%s Found %d C# file(s)\n", SuccessStyle.Render("✓"), len(files))
 
 	// Feature 2: Show ALL rules preview and allow toggling before run
 	// Get ALL version-compatible rules (not filtered by safety)
@@ -261,10 +285,18 @@ func (im *InteractiveMode) runImprove() {
 	}
 
 	var confirm bool
-	_ = huh.NewConfirm().
+	err = huh.NewConfirm().
 		Title("Apply changes?").
+		Affirmative("Yes, apply").
+		Negative("No, cancel").
 		Value(&confirm).
 		Run()
+
+	if err != nil {
+		// Ctrl+C pressed
+		fmt.Println(SubtitleStyle.Render("Cancelled"))
+		return
+	}
 
 	if !confirm {
 		fmt.Println("Cancelled")
@@ -318,6 +350,7 @@ func (im *InteractiveMode) showSettings() {
 	)
 
 	if err := form.Run(); err != nil {
+		// Ctrl+C - return to main menu
 		return
 	}
 
@@ -362,6 +395,7 @@ func (im *InteractiveMode) showRules() {
 		fmt.Println()
 	}
 
+	fmt.Println(SubtitleStyle.Render("  Press Enter to return to main menu"))
 	var cont bool
-	_ = huh.NewConfirm().Title("").Affirmative("OK").Negative("").Value(&cont).Run()
+	_ = huh.NewConfirm().Title("").Affirmative("← Back").Negative("").Value(&cont).Run()
 }
