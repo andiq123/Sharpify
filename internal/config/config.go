@@ -35,7 +35,7 @@ func Load() *Config {
 		return cfg
 	}
 
-	json.Unmarshal(data, cfg)
+	_ = json.Unmarshal(data, cfg)
 	return cfg
 }
 

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/andiq123/sharpify/internal/backup"
 	"github.com/andiq123/sharpify/internal/config"
@@ -55,15 +54,15 @@ func (im *InteractiveMode) printStatus() {
 	if !im.config.SafeOnly {
 		mode = "all"
 	}
-	backup := "off"
+	bkp := "off"
 	if im.config.BackupEnabled {
-		backup = "on"
+		bkp = "on"
 	}
 
 	fmt.Printf("  %s | %s mode | backup %s\n\n",
 		SubtitleStyle.Render(version.String()),
 		mode,
-		backup)
+		bkp)
 }
 
 func (im *InteractiveMode) showMainMenu() string {
@@ -83,7 +82,7 @@ func (im *InteractiveMode) showMainMenu() string {
 		),
 	)
 
-	form.Run()
+	_ = form.Run()
 	return action
 }
 
@@ -129,7 +128,7 @@ func (im *InteractiveMode) runImprove() {
 	}
 
 	var confirm bool
-	huh.NewConfirm().
+	_ = huh.NewConfirm().
 		Title("Apply changes?").
 		Value(&confirm).
 		Run()
@@ -142,13 +141,13 @@ func (im *InteractiveMode) runImprove() {
 	if im.config.BackupEnabled {
 		im.backupMgr = backup.New(cwd)
 		for _, r := range changed {
-			im.backupMgr.Backup(r.File.Path, r.File.Content)
+			_ = im.backupMgr.Backup(r.File.Path, r.File.Content)
 		}
 		fmt.Printf("Backup: %s\n", im.backupMgr.BackupDir())
 	}
 
 	for _, r := range changed {
-		os.WriteFile(r.File.Path, []byte(r.NewContent), 0644)
+		_ = os.WriteFile(r.File.Path, []byte(r.NewContent), 0644)
 	}
 
 	fmt.Println(SuccessStyle.Render(fmt.Sprintf("Updated %d file(s)", len(changed))))
@@ -192,7 +191,7 @@ func (im *InteractiveMode) showSettings() {
 	im.config.TargetVersion = version
 	im.config.SafeOnly = safeOnly
 	im.config.BackupEnabled = backupEnabled
-	im.config.Save()
+	_ = im.config.Save()
 
 	fmt.Println(SuccessStyle.Render("Settings saved"))
 	im.printStatus()
@@ -231,38 +230,5 @@ func (im *InteractiveMode) showRules() {
 	}
 
 	var cont bool
-	huh.NewConfirm().Title("").Affirmative("OK").Negative("").Value(&cont).Run()
-}
-
-func (im *InteractiveMode) showDiff(old, new string) {
-	oldLines := strings.Split(old, "\n")
-	newLines := strings.Split(new, "\n")
-
-	maxLines := len(oldLines)
-	if len(newLines) > maxLines {
-		maxLines = len(newLines)
-	}
-
-	shown := 0
-	for i := 0; i < maxLines && shown < 30; i++ {
-		oldLine := ""
-		newLine := ""
-		if i < len(oldLines) {
-			oldLine = oldLines[i]
-		}
-		if i < len(newLines) {
-			newLine = newLines[i]
-		}
-
-		if oldLine != newLine {
-			if oldLine != "" {
-				fmt.Println(DiffRemoveStyle.Render("- " + oldLine))
-				shown++
-			}
-			if newLine != "" {
-				fmt.Println(DiffAddStyle.Render("+ " + newLine))
-				shown++
-			}
-		}
-	}
+	_ = huh.NewConfirm().Title("").Affirmative("OK").Negative("").Value(&cont).Run()
 }
