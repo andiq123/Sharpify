@@ -57,16 +57,53 @@ func (r *PatternMatchingNull) Apply(content string) (string, bool) {
 	changed := false
 	result := content
 
-	pattern1 := regexp.MustCompile(`(\w+)\s*==\s*null`)
+	// Only convert null checks in simple statement contexts (if, while, etc.)
+	// Avoid converting inside lambdas (=>) as it may break Expression trees in LINQ
+
+	// Pattern for: if (x == null) or while (x != null) - statement level only
+	// Use word boundary and statement context to be safe
+	pattern1 := regexp.MustCompile(`(\bif\s*\(\s*)(\w+)\s*==\s*null(\s*\))`)
 	if pattern1.MatchString(result) {
-		result = pattern1.ReplaceAllString(result, "${1} is null")
+		result = pattern1.ReplaceAllString(result, "${1}${2} is null${3}")
 		changed = true
 	}
 
-	pattern2 := regexp.MustCompile(`(\w+)\s*!=\s*null`)
+	pattern2 := regexp.MustCompile(`(\bif\s*\(\s*)(\w+)\s*!=\s*null(\s*\))`)
 	if pattern2.MatchString(result) {
-		result = pattern2.ReplaceAllString(result, "${1} is not null")
+		result = pattern2.ReplaceAllString(result, "${1}${2} is not null${3}")
 		changed = true
+	}
+
+	// Also handle while statements
+	pattern3 := regexp.MustCompile(`(\bwhile\s*\(\s*)(\w+)\s*==\s*null(\s*\))`)
+	if pattern3.MatchString(result) {
+		result = pattern3.ReplaceAllString(result, "${1}${2} is null${3}")
+		changed = true
+	}
+
+	pattern4 := regexp.MustCompile(`(\bwhile\s*\(\s*)(\w+)\s*!=\s*null(\s*\))`)
+	if pattern4.MatchString(result) {
+		result = pattern4.ReplaceAllString(result, "${1}${2} is not null${3}")
+		changed = true
+	}
+
+	// Handle ternary conditionals at assignment level (safe context)
+	// x == null ? a : b - only when not preceded by =>
+	pattern5 := regexp.MustCompile(`([=,\(]\s*)(\w+)\s*==\s*null\s*\?`)
+	if pattern5.MatchString(result) {
+		// Check we're not in a lambda context
+		result = pattern5.ReplaceAllStringFunc(result, func(match string) string {
+			// Skip if this looks like it's in a lambda context
+			if regexp.MustCompile(`=>\s*$`).MatchString(match) {
+				return match
+			}
+			submatches := pattern5.FindStringSubmatch(match)
+			if submatches == nil {
+				return match
+			}
+			changed = true
+			return submatches[1] + submatches[2] + " is null ?"
+		})
 	}
 
 	return result, changed
