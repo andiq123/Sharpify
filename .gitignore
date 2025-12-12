@@ -1,0 +1,38 @@
+# Binaries
+sharpify
+csharp-improver
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output of go coverage
+*.out
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backup directories
+.sharpify-backup/
+
+# Test data backups
+testdata/*.bak
+
+# Build
+dist/
