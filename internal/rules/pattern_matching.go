@@ -57,44 +57,72 @@ func (r *PatternMatchingNull) Apply(content string) (string, bool) {
 	changed := false
 	result := content
 
-	// Only convert null checks in simple statement contexts (if, while, etc.)
+	// Convert null checks in statement contexts (if, while, etc.)
 	// Avoid converting inside lambdas (=>) as it may break Expression trees in LINQ
 
-	// Pattern for: if (x == null) or while (x != null) - statement level only
-	// Use word boundary and statement context to be safe
-	pattern1 := regexp.MustCompile(`(\bif\s*\(\s*)(\w+)\s*==\s*null(\s*\))`)
-	if pattern1.MatchString(result) {
-		result = pattern1.ReplaceAllString(result, "${1}${2} is null${3}")
-		changed = true
+	// Helper function to check if we're in a lambda context
+	isLambdaContext := func(line string, matchStart int) bool {
+		// Check if there's a => before this match on the same line
+		prefix := line[:matchStart]
+		return regexp.MustCompile(`=>\s*`).MatchString(prefix)
 	}
 
-	pattern2 := regexp.MustCompile(`(\bif\s*\(\s*)(\w+)\s*!=\s*null(\s*\))`)
-	if pattern2.MatchString(result) {
-		result = pattern2.ReplaceAllString(result, "${1}${2} is not null${3}")
-		changed = true
+	// Process line by line to avoid cross-line issues and check lambda context
+	lines := regexp.MustCompile(`(?m)^.*$`).FindAllString(result, -1)
+	var processedLines []string
+
+	for _, line := range lines {
+		processedLine := line
+
+		// Skip lines that look like they're in lambda/LINQ context
+		if regexp.MustCompile(`=>`).MatchString(line) {
+			processedLines = append(processedLines, processedLine)
+			continue
+		}
+
+		// Pattern for identifier == null (with word boundary to catch field names like _redisDatabase)
+		// Match: _identifier == null or identifier == null
+		nullEqPattern := regexp.MustCompile(`(\b_?\w+)\s*==\s*null\b`)
+		if nullEqPattern.MatchString(processedLine) {
+			// Only apply in if/while/return/assignment contexts
+			if regexp.MustCompile(`\b(if|while|return)\s*\(`).MatchString(processedLine) ||
+				regexp.MustCompile(`[=,\(]\s*_?\w+\s*==\s*null`).MatchString(processedLine) {
+				processedLine = nullEqPattern.ReplaceAllString(processedLine, "${1} is null")
+				changed = true
+			}
+		}
+
+		// Pattern for identifier != null
+		nullNeqPattern := regexp.MustCompile(`(\b_?\w+)\s*!=\s*null\b`)
+		if nullNeqPattern.MatchString(processedLine) {
+			// Only apply in if/while/return/assignment contexts
+			if regexp.MustCompile(`\b(if|while|return)\s*\(`).MatchString(processedLine) ||
+				regexp.MustCompile(`[=,\(]\s*_?\w+\s*!=\s*null`).MatchString(processedLine) {
+				processedLine = nullNeqPattern.ReplaceAllString(processedLine, "${1} is not null")
+				changed = true
+			}
+		}
+
+		processedLines = append(processedLines, processedLine)
 	}
 
-	// Also handle while statements
-	pattern3 := regexp.MustCompile(`(\bwhile\s*\(\s*)(\w+)\s*==\s*null(\s*\))`)
-	if pattern3.MatchString(result) {
-		result = pattern3.ReplaceAllString(result, "${1}${2} is null${3}")
-		changed = true
-	}
-
-	pattern4 := regexp.MustCompile(`(\bwhile\s*\(\s*)(\w+)\s*!=\s*null(\s*\))`)
-	if pattern4.MatchString(result) {
-		result = pattern4.ReplaceAllString(result, "${1}${2} is not null${3}")
-		changed = true
+	if changed {
+		result = ""
+		for i, line := range processedLines {
+			if i > 0 {
+				result += "\n"
+			}
+			result += line
+		}
 	}
 
 	// Handle ternary conditionals at assignment level (safe context)
 	// x == null ? a : b - only when not preceded by =>
 	pattern5 := regexp.MustCompile(`([=,\(]\s*)(\w+)\s*==\s*null\s*\?`)
 	if pattern5.MatchString(result) {
-		// Check we're not in a lambda context
 		result = pattern5.ReplaceAllStringFunc(result, func(match string) string {
 			// Skip if this looks like it's in a lambda context
-			if regexp.MustCompile(`=>\s*$`).MatchString(match) {
+			if regexp.MustCompile(`=>\s*`).MatchString(match) {
 				return match
 			}
 			submatches := pattern5.FindStringSubmatch(match)
@@ -105,6 +133,8 @@ func (r *PatternMatchingNull) Apply(content string) (string, bool) {
 			return submatches[1] + submatches[2] + " is null ?"
 		})
 	}
+
+	_ = isLambdaContext // Silence unused warning for now
 
 	return result, changed
 }
