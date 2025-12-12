@@ -1,0 +1,39 @@
+{
+  "RT_GROUP_ICON": {
+    "APP": {
+      "0000": [
+        "icon.png",
+        "icon-16.png"
+      ]
+    }
+  },
+  "RT_MANIFEST": {
+    "#1": {
+      "0409": "sharpify.manifest"
+    }
+  },
+  "RT_VERSION": {
+    "#1": {
+      "0000": {
+        "fixed": {
+          "file_version": "1.0.0.0",
+          "product_version": "1.0.0.0",
+          "flags": "",
+          "type": "App"
+        },
+        "info": {
+          "0409": {
+            "CompanyName": "Sharpify Contributors",
+            "FileDescription": "Sharpify - Modernize legacy C# code",
+            "FileVersion": "1.0.0.0",
+            "InternalName": "sharpify",
+            "LegalCopyright": "MIT License - https://github.com/andiq123/Sharpify",
+            "OriginalFilename": "sharpify.exe",
+            "ProductName": "Sharpify",
+            "ProductVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  }
+}

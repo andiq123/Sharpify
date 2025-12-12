@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/andiq123/sharpify/internal/backup"
 	"github.com/andiq123/sharpify/internal/rules"
 	"github.com/andiq123/sharpify/internal/scanner"
 	"github.com/andiq123/sharpify/internal/transformer"
+	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // InteractiveMode runs the interactive CLI
@@ -583,5 +583,5 @@ func (im *InteractiveMode) showRulesInfo() {
 				Value(&cont),
 		),
 	)
-	form.Run()
+	_ = form.Run()
 }
