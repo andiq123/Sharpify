@@ -25,6 +25,10 @@ func NewRegistry() *RuleRegistry {
 	r.Register(rules.NewNullPropagation())
 	r.Register(rules.NewVarPattern())
 	r.Register(rules.NewStopwatchStartNew())
+	r.Register(rules.NewConditionalAccessDelegate())
+	r.Register(rules.NewExceptionFilter())
+	r.Register(rules.NewLinqCountAny())
+	r.Register(rules.NewLinqWhereFirst())
 
 	// C# 7+ rules
 	r.Register(rules.NewPatternMatching())
@@ -32,6 +36,8 @@ func NewRegistry() *RuleRegistry {
 	r.Register(rules.NewTupleDeconstruction())
 	r.Register(rules.NewDiscardVariable())
 	r.Register(rules.NewSpanSuggestion())
+	r.Register(rules.NewThrowExpression())
+	r.Register(rules.NewTupleSwap())
 
 	// C# 8+ rules
 	r.Register(rules.NewNullCoalescing())
@@ -48,15 +54,18 @@ func NewRegistry() *RuleRegistry {
 	r.Register(rules.NewFileScopedNamespace())
 	r.Register(rules.NewGlobalUsing())
 	r.Register(rules.NewImplicitUsing())
+	r.Register(rules.NewThrowHelper())
 
 	// C# 11+ rules
 	r.Register(rules.NewRawStringLiteral())
 	r.Register(rules.NewRequiredProperty())
 	r.Register(rules.NewListPattern())
+	r.Register(rules.NewStringIsNullOrEmpty())
 
 	// C# 12+ rules
 	r.Register(rules.NewCollectionExpression())
 	r.Register(rules.NewPrimaryConstructor())
+	r.Register(rules.NewSpreadOperator())
 
 	return r
 }

@@ -26,9 +26,8 @@ type InteractiveMode struct {
 }
 
 func NewInteractive() *InteractiveMode {
-	// Load config but clear the working path - always start fresh
 	cfg := config.Load()
-	cfg.WorkingPath = "" // Don't remember last path
+	cfg.WorkingPath = ""
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -40,9 +39,7 @@ func NewInteractive() *InteractiveMode {
 		cancel:   cancel,
 	}
 
-	// Setup Ctrl+C handler
 	im.setupSignalHandler()
-
 	return im
 }
 
@@ -52,7 +49,7 @@ func (im *InteractiveMode) setupSignalHandler() {
 
 	go func() {
 		<-sigChan
-		fmt.Println("\n" + SubtitleStyle.Render("Goodbye! 👋"))
+		fmt.Println("\n\n" + SubtitleStyle.Render("👋 Goodbye!"))
 		im.cancel()
 		os.Exit(0)
 	}()
@@ -60,49 +57,48 @@ func (im *InteractiveMode) setupSignalHandler() {
 
 func (im *InteractiveMode) Run() error {
 	fmt.Println(Banner())
-	fmt.Println(SubtitleStyle.Render("  Press Ctrl+C anytime to exit"))
 	fmt.Println()
-	im.printStatus()
 
 	for {
-		// Check if context was cancelled
 		select {
 		case <-im.ctx.Done():
 			return nil
 		default:
 		}
 
+		im.printStatusBar()
 		action := im.showMainMenu()
 
 		switch action {
-		case "run":
-			im.runImprove()
+		case "quick":
+			im.runQuick()
+		case "custom":
+			im.runCustom()
 		case "settings":
 			im.showSettings()
 		case "rules":
 			im.showRules()
 		case "quit", "":
-			fmt.Println(SubtitleStyle.Render("Goodbye! 👋"))
+			fmt.Println("\n" + SubtitleStyle.Render("👋 Goodbye!"))
 			return nil
 		}
 	}
 }
 
-func (im *InteractiveMode) printStatus() {
+func (im *InteractiveMode) printStatusBar() {
 	version := im.config.GetVersion()
-	mode := "safe"
+	ruleCount := len(im.registry.GetByVersion(version, im.config.SafeOnly))
+
+	mode := SuccessStyle.Render("safe")
 	if !im.config.SafeOnly {
-		mode = "all"
-	}
-	bkp := "off"
-	if im.config.BackupEnabled {
-		bkp = "on"
+		mode = WarningStyle.Render("all rules")
 	}
 
-	fmt.Printf("  %s | %s mode | backup %s\n\n",
-		SubtitleStyle.Render(version.String()),
+	fmt.Printf("  %s  •  %s  •  %s\n\n",
+		AccentStyle.Render(version.String()),
 		mode,
-		bkp)
+		SubtitleStyle.Render(fmt.Sprintf("%d rules available", ruleCount)),
+	)
 }
 
 func (im *InteractiveMode) showMainMenu() string {
@@ -113,153 +109,182 @@ func (im *InteractiveMode) showMainMenu() string {
 			huh.NewSelect[string]().
 				Title("What would you like to do?").
 				Options(
-					huh.NewOption("▶ Run  - Scan and improve C# code", "run"),
-					huh.NewOption("⚙ Settings  - Configure version and options", "settings"),
-					huh.NewOption("📋 Rules  - View available transformations", "rules"),
-					huh.NewOption("✕ Exit  - Quit Sharpify", "quit"),
+					huh.NewOption("⚡ Quick Run  →  Improve code with smart defaults", "quick"),
+					huh.NewOption("🎯 Custom Run  →  Choose specific rules to apply", "custom"),
+					huh.NewOption("⚙  Settings  →  Configure C# version & options", "settings"),
+					huh.NewOption("📋 Rules  →  Browse available transformations", "rules"),
+					huh.NewOption("✕  Exit", "quit"),
 				).
 				Value(&action),
 		),
 	)
 
 	if err := form.Run(); err != nil {
-		return "quit" // Ctrl+C or error - exit gracefully
+		return "quit"
 	}
 	return action
 }
 
-func (im *InteractiveMode) runImprove() {
-	// Always ask for path - get current directory as default suggestion
+func (im *InteractiveMode) runQuick() {
+	path := im.selectPath()
+	if path == "" {
+		return
+	}
+
+	files, err := im.scanFiles(path)
+	if err != nil || len(files) == 0 {
+		return
+	}
+
+	// Use all enabled safe rules
+	allRules := im.registry.GetByVersion(im.config.GetVersion(), im.config.SafeOnly)
+	enabledRules := im.config.GetEnabledRules(allRules)
+
+	if len(enabledRules) == 0 {
+		fmt.Println(Warn("No rules enabled. Go to Settings to configure."))
+		return
+	}
+
+	fmt.Printf("\n  %s Applying %d rules...\n", InfoStyle.Render("⚡"), len(enabledRules))
+
+	im.applyTransformations(path, files, enabledRules)
+}
+
+func (im *InteractiveMode) runCustom() {
+	path := im.selectPath()
+	if path == "" {
+		return
+	}
+
+	files, err := im.scanFiles(path)
+	if err != nil || len(files) == 0 {
+		return
+	}
+
+	// Show rule selector
+	allRules := im.registry.GetByVersion(im.config.GetVersion(), false)
+	selectedRules := im.selectRules(allRules)
+
+	if len(selectedRules) == 0 {
+		fmt.Println(Warn("No rules selected."))
+		return
+	}
+
+	im.applyTransformations(path, files, selectedRules)
+}
+
+func (im *InteractiveMode) selectPath() string {
 	currentDir, _ := os.Getwd()
 
 	fmt.Println()
-	fmt.Println(TitleStyle.Render("📂 Select Project Path"))
-	fmt.Println(SubtitleStyle.Render("Press Enter to use current directory, or type a new path"))
+	fmt.Println(TitleStyle.Render("📂 Project Path"))
+	fmt.Println(Tip("Press Enter for current directory, or type a path"))
+	fmt.Println()
 
 	var inputPath string
 	err := huh.NewInput().
-		Title("Path to C# project").
-		Placeholder(currentDir + " (current)").
+		Title("Path").
+		Placeholder(currentDir).
 		Value(&inputPath).
 		Run()
 
 	if err != nil {
-		// Ctrl+C pressed
-		return
+		return ""
 	}
 
-	// Use current directory if empty input
 	workingDir := currentDir
 	if inputPath != "" {
-		// Expand ~ to home directory
 		if len(inputPath) > 0 && inputPath[0] == '~' {
 			home, _ := os.UserHomeDir()
 			inputPath = filepath.Join(home, inputPath[1:])
 		}
 
-		// Resolve to absolute path
 		absPath, err := filepath.Abs(inputPath)
 		if err != nil {
-			fmt.Println(ErrorStyle.Render("Invalid path: " + err.Error()))
-			return
+			fmt.Println(Fail("Invalid path: " + err.Error()))
+			return ""
 		}
 
-		// Check if path exists
 		if _, err := os.Stat(absPath); os.IsNotExist(err) {
-			fmt.Println(ErrorStyle.Render("Path does not exist: " + absPath))
-			return
+			fmt.Println(Fail("Path does not exist"))
+			return ""
 		}
 
 		workingDir = absPath
 	}
 
-	fmt.Printf("\n%s %s\n", SubtitleStyle.Render("Scanning:"), workingDir)
+	return workingDir
+}
 
-	// Scan for C# files
-	files, err := im.scanner.Scan(workingDir)
+func (im *InteractiveMode) scanFiles(path string) ([]scanner.FileInfo, error) {
+	fmt.Printf("\n  %s Scanning for C# files...\n", InfoStyle.Render("🔍"))
+
+	files, err := im.scanner.Scan(path)
 	if err != nil {
-		fmt.Println(ErrorStyle.Render("Scan failed: " + err.Error()))
-		return
+		fmt.Println(Fail("Scan failed: " + err.Error()))
+		return nil, err
 	}
 
 	if len(files) == 0 {
-		fmt.Println(WarningStyle.Render("No C# files found in: " + workingDir))
-		fmt.Println(SubtitleStyle.Render("Tip: Make sure the path contains .cs files"))
-		return
+		fmt.Println(Warn("No C# files found"))
+		fmt.Println(Tip("Make sure the path contains .cs files"))
+		return nil, nil
 	}
 
-	fmt.Printf("\n%s Found %d C# file(s)\n", SuccessStyle.Render("✓"), len(files))
+	fmt.Println(Success(fmt.Sprintf("Found %d C# file(s)", len(files))))
+	return files, nil
+}
 
-	// Feature 2: Show ALL rules preview and allow toggling before run
-	// Get ALL version-compatible rules (not filtered by safety)
-	allRules := im.registry.GetByVersion(im.config.GetVersion(), false)
+func (im *InteractiveMode) selectRules(allRules []rules.Rule) []rules.Rule {
+	fmt.Println()
+	fmt.Println(TitleStyle.Render("🎯 Select Rules"))
+	fmt.Println(Tip("Space to toggle, Enter to confirm"))
+	fmt.Println()
 
-	if len(allRules) == 0 {
-		fmt.Println(WarningStyle.Render("No rules available for current settings"))
-		return
-	}
-
-	// Build options for multi-select with visual indicators
 	var ruleOptions []huh.Option[string]
-	var selectedRules []string
+	var selectedNames []string
 
 	for _, r := range allRules {
 		vr := r.(rules.VersionedRule)
 
-		// Add visual indicator for safe vs unsafe
-		var indicator string
-		if vr.IsSafe() {
-			indicator = SuccessStyle.Render("✓")
-		} else {
-			indicator = WarningStyle.Render("⚠")
+		icon := SuccessStyle.Render("✓")
+		if !vr.IsSafe() {
+			icon = WarningStyle.Render("⚠")
 		}
 
-		label := fmt.Sprintf("%s %s - %s", indicator, r.Name(), r.Description())
+		label := fmt.Sprintf("%s %s", icon, r.Name())
 		ruleOptions = append(ruleOptions, huh.NewOption(label, r.Name()))
 
-		// Pre-selection: if safeOnly mode, only pre-select safe rules
-		// Otherwise pre-select all rules that aren't explicitly disabled
 		if !im.config.IsRuleDisabled(r.Name()) {
 			if !im.config.SafeOnly || vr.IsSafe() {
-				selectedRules = append(selectedRules, r.Name())
+				selectedNames = append(selectedNames, r.Name())
 			}
 		}
 	}
 
-	fmt.Println()
-	fmt.Println(TitleStyle.Render("Configure Rules"))
-	fmt.Println(SubtitleStyle.Render("✓ safe  ⚠ opt-in (may need review) | space to toggle, enter to confirm"))
-
 	_ = huh.NewMultiSelect[string]().
-		Title("Rules to Apply").
+		Title(fmt.Sprintf("Available Rules (%d)", len(allRules))).
 		Options(ruleOptions...).
-		Value(&selectedRules).
+		Value(&selectedNames).
 		Run()
 
-	// Feature 3: Update and persist rule enabled/disabled state
+	// Update config
 	for _, r := range allRules {
 		isSelected := false
-		for _, sel := range selectedRules {
-			if sel == r.Name() {
+		for _, name := range selectedNames {
+			if name == r.Name() {
 				isSelected = true
 				break
 			}
 		}
-		// SetRuleDisabled(name, disabled) - if selected, it's NOT disabled
 		im.config.SetRuleDisabled(r.Name(), !isSelected)
 	}
 	_ = im.config.Save()
 
-	// Filter to only enabled rules
-	enabledRules := im.config.GetEnabledRules(allRules)
+	return im.config.GetEnabledRules(allRules)
+}
 
-	if len(enabledRules) == 0 {
-		fmt.Println(WarningStyle.Render("No rules enabled - nothing to do"))
-		return
-	}
-
-	fmt.Printf("\nApplying %d rule(s)...\n", len(enabledRules))
-
+func (im *InteractiveMode) applyTransformations(workingDir string, files []scanner.FileInfo, enabledRules []rules.Rule) {
 	t := transformer.New(enabledRules)
 	results := t.TransformAll(files)
 
@@ -271,54 +296,64 @@ func (im *InteractiveMode) runImprove() {
 	}
 
 	if len(changed) == 0 {
-		fmt.Println(SuccessStyle.Render("All files up to date"))
+		fmt.Println()
+		fmt.Println(Success("All files are already up to date!"))
 		return
 	}
 
-	fmt.Printf("\n%d file(s) to update:\n", len(changed))
+	// Show summary
+	fmt.Println()
+	fmt.Println(Divider())
+	fmt.Println(TitleStyle.Render(fmt.Sprintf("📝 %d file(s) to update", len(changed))))
+	fmt.Println()
+
 	for _, r := range changed {
 		rel, _ := filepath.Rel(workingDir, r.File.Path)
-		fmt.Printf("  %s\n", rel)
+		fmt.Printf("  %s %s\n", FileStyle.Render("→"), rel)
 		for _, rule := range r.AppliedRules {
 			fmt.Printf("    %s\n", RuleStyle.Render("+ "+rule.Description))
 		}
 	}
 
+	fmt.Println()
+
+	// Confirm
 	var confirm bool
-	err = huh.NewConfirm().
-		Title("Apply changes?").
-		Affirmative("Yes, apply").
-		Negative("No, cancel").
+	err := huh.NewConfirm().
+		Title("Apply these changes?").
+		Affirmative("✓ Yes, apply").
+		Negative("✗ Cancel").
 		Value(&confirm).
 		Run()
 
-	if err != nil {
-		// Ctrl+C pressed
+	if err != nil || !confirm {
 		fmt.Println(SubtitleStyle.Render("Cancelled"))
 		return
 	}
 
-	if !confirm {
-		fmt.Println("Cancelled")
-		return
-	}
-
+	// Backup if enabled
 	if im.config.BackupEnabled {
 		im.backupMgr = backup.New(workingDir)
 		for _, r := range changed {
 			_ = im.backupMgr.Backup(r.File.Path, r.File.Content)
 		}
-		fmt.Printf("Backup: %s\n", im.backupMgr.BackupDir())
+		fmt.Println(InfoStyle.Render("📦 Backup created: ") + SubtitleStyle.Render(im.backupMgr.BackupDir()))
 	}
 
+	// Apply changes
 	for _, r := range changed {
 		_ = os.WriteFile(r.File.Path, []byte(r.NewContent), 0644)
 	}
 
-	fmt.Println(SuccessStyle.Render(fmt.Sprintf("Updated %d file(s)", len(changed))))
+	fmt.Println()
+	fmt.Println(Success(fmt.Sprintf("Updated %d file(s) successfully!", len(changed))))
 }
 
 func (im *InteractiveMode) showSettings() {
+	fmt.Println()
+	fmt.Println(TitleStyle.Render("⚙ Settings"))
+	fmt.Println()
+
 	var version string
 	var safeOnly bool = im.config.SafeOnly
 	var backupEnabled bool = im.config.BackupEnabled
@@ -327,30 +362,30 @@ func (im *InteractiveMode) showSettings() {
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title("C# Version").
+				Description("Select your target C# version").
 				Options(
-					huh.NewOption("C# 6  (.NET 4.6+)", "6"),
-					huh.NewOption("C# 7  (.NET Core 2.0+)", "7"),
-					huh.NewOption("C# 8  (.NET Core 3.0+)", "8"),
-					huh.NewOption("C# 9  (.NET 5.0+)", "9"),
-					huh.NewOption("C# 10 (.NET 6.0+)", "10"),
-					huh.NewOption("C# 11 (.NET 7.0+)", "11"),
-					huh.NewOption("C# 12 (.NET 8.0+)", "12"),
-					huh.NewOption("C# 13 (.NET 9.0+)", "13"),
+					huh.NewOption("C# 6   (.NET 4.6+)", "6"),
+					huh.NewOption("C# 7   (.NET Core 2.0+)", "7"),
+					huh.NewOption("C# 8   (.NET Core 3.0+)", "8"),
+					huh.NewOption("C# 9   (.NET 5.0+)", "9"),
+					huh.NewOption("C# 10  (.NET 6.0+)", "10"),
+					huh.NewOption("C# 11  (.NET 7.0+)", "11"),
+					huh.NewOption("C# 12  (.NET 8.0+)", "12"),
+					huh.NewOption("C# 13  (.NET 9.0+)", "13"),
 				).
 				Value(&version),
 			huh.NewConfirm().
-				Title("Safe mode").
-				Description("Only apply safe transformations").
+				Title("Safe Mode").
+				Description("Only apply safe transformations (recommended)").
 				Value(&safeOnly),
 			huh.NewConfirm().
-				Title("Backup").
-				Description("Create backups before changes").
+				Title("Create Backups").
+				Description("Backup files before modifying").
 				Value(&backupEnabled),
 		),
 	)
 
 	if err := form.Run(); err != nil {
-		// Ctrl+C - return to main menu
 		return
 	}
 
@@ -359,8 +394,9 @@ func (im *InteractiveMode) showSettings() {
 	im.config.BackupEnabled = backupEnabled
 	_ = im.config.Save()
 
-	fmt.Println(SuccessStyle.Render("Settings saved"))
-	im.printStatus()
+	fmt.Println()
+	fmt.Println(Success("Settings saved!"))
+	fmt.Println()
 }
 
 func (im *InteractiveMode) showRules() {
@@ -372,30 +408,42 @@ func (im *InteractiveMode) showRules() {
 	}
 
 	fmt.Println()
+	fmt.Println(TitleStyle.Render("📋 Available Rules"))
+	fmt.Println()
+
+	totalRules := 0
 	for _, v := range versions {
 		ruleList, ok := groups[v]
 		if !ok || len(ruleList) == 0 {
 			continue
 		}
 
-		marker := ""
-		if v == im.config.GetVersion() {
-			marker = " *"
+		// Version header with count
+		isActive := v <= im.config.GetVersion()
+		header := fmt.Sprintf("%s (%d rules)", v.String(), len(ruleList))
+		if isActive {
+			fmt.Println(AccentStyle.Render("▸ " + header))
+		} else {
+			fmt.Println(SubtitleStyle.Render("  " + header))
 		}
 
-		fmt.Println(TitleStyle.Render(v.String() + marker))
-		for _, r := range ruleList {
-			vr := r.(rules.VersionedRule)
-			safe := SuccessStyle.Render("safe")
-			if !vr.IsSafe() {
-				safe = WarningStyle.Render("opt-in")
+		if isActive {
+			for _, r := range ruleList {
+				vr := r.(rules.VersionedRule)
+				icon := SuccessStyle.Render("✓")
+				if !vr.IsSafe() {
+					icon = WarningStyle.Render("⚠")
+				}
+				fmt.Printf("    %s %-28s %s\n", icon, r.Name(), SubtitleStyle.Render(r.Description()))
 			}
-			fmt.Printf("  %-25s %s [%s]\n", r.Name(), SubtitleStyle.Render(r.Description()), safe)
 		}
 		fmt.Println()
+		totalRules += len(ruleList)
 	}
 
-	fmt.Println(SubtitleStyle.Render("  Press Enter to return to main menu"))
+	fmt.Println(SubtitleStyle.Render(fmt.Sprintf("  Total: %d rules", totalRules)))
+	fmt.Println()
+
 	var cont bool
 	_ = huh.NewConfirm().Title("").Affirmative("← Back").Negative("").Value(&cont).Run()
 }

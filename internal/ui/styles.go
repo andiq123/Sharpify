@@ -1,26 +1,28 @@
 package ui
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/lipgloss"
 )
 
 var (
-	// Colors
-	Primary   = lipgloss.Color("#7C3AED")
-	Secondary = lipgloss.Color("#10B981")
-	Warning   = lipgloss.Color("#F59E0B")
-	Error     = lipgloss.Color("#EF4444")
-	Muted     = lipgloss.Color("#6B7280")
+	// Colors - Modern, clean palette
+	Primary   = lipgloss.Color("#6366F1") // Indigo
+	Secondary = lipgloss.Color("#10B981") // Emerald
+	Warning   = lipgloss.Color("#F59E0B") // Amber
+	Error     = lipgloss.Color("#EF4444") // Red
+	Muted     = lipgloss.Color("#9CA3AF") // Gray
+	Accent    = lipgloss.Color("#8B5CF6") // Violet
+	Info      = lipgloss.Color("#3B82F6") // Blue
 
 	// Styles
 	TitleStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(Primary).
-			MarginBottom(1)
+			Foreground(Primary)
 
 	SubtitleStyle = lipgloss.NewStyle().
-			Foreground(Muted).
-			Italic(true)
+			Foreground(Muted)
 
 	SuccessStyle = lipgloss.NewStyle().
 			Foreground(Secondary).
@@ -33,16 +35,30 @@ var (
 			Foreground(Error).
 			Bold(true)
 
+	InfoStyle = lipgloss.NewStyle().
+			Foreground(Info)
+
 	FileStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#60A5FA"))
 
 	RuleStyle = lipgloss.NewStyle().
 			Foreground(Secondary)
 
+	AccentStyle = lipgloss.NewStyle().
+			Foreground(Accent).
+			Bold(true)
+
+	// Box and container styles
 	BoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(Primary).
 			Padding(1, 2)
+
+	HeaderStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("#FFFFFF")).
+			Background(Primary).
+			Padding(0, 2)
 
 	DiffAddStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#22C55E")).
@@ -51,16 +67,77 @@ var (
 	DiffRemoveStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#EF4444")).
 			Background(lipgloss.Color("#450A0A"))
+
+	// Status indicator styles
+	DotSuccess = lipgloss.NewStyle().Foreground(Secondary).Render("●")
+	DotWarning = lipgloss.NewStyle().Foreground(Warning).Render("●")
+	DotError   = lipgloss.NewStyle().Foreground(Error).Render("●")
+	DotInfo    = lipgloss.NewStyle().Foreground(Info).Render("●")
 )
 
 func Banner() string {
 	banner := `
-  ____  _                       _  __
- / ___|| |__   __ _ _ __ _ __ (_)/ _|_   _
- \___ \| '_ \ / _' | '__| '_ \| | |_| | | |
-  ___) | | | | (_| | |  | |_) | |  _| |_| |
- |____/|_| |_|\__,_|_|  | .__/|_|_|  \__, |
-                        |_|          |___/
-`
-	return TitleStyle.Render(banner)
+  ╔═══════════════════════════════════════════╗
+  ║                                           ║
+  ║   ⚡  S H A R P I F Y                     ║
+  ║                                           ║
+  ║   Modernize your C# code instantly        ║
+  ║                                           ║
+  ╚═══════════════════════════════════════════╝`
+	return AccentStyle.Render(banner)
+}
+
+func SmallBanner() string {
+	return AccentStyle.Render("⚡ Sharpify")
+}
+
+func Divider() string {
+	return SubtitleStyle.Render("─────────────────────────────────────────────")
+}
+
+func StatusBadge(label string, value string, color lipgloss.Color) string {
+	badge := lipgloss.NewStyle().
+		Foreground(color).
+		Bold(true).
+		Render(value)
+	return SubtitleStyle.Render(label+": ") + badge
+}
+
+func ProgressBar(current, total int, width int) string {
+	if total == 0 {
+		return ""
+	}
+
+	filled := int(float64(current) / float64(total) * float64(width))
+	if filled > width {
+		filled = width
+	}
+
+	bar := ""
+	for i := 0; i < width; i++ {
+		if i < filled {
+			bar += "█"
+		} else {
+			bar += "░"
+		}
+	}
+
+	return InfoStyle.Render(bar) + SubtitleStyle.Render(" "+fmt.Sprintf("%d/%d", current, total))
+}
+
+// Quick helper for common outputs
+func Success(msg string) string {
+	return SuccessStyle.Render("✓ ") + msg
+}
+
+func Warn(msg string) string {
+	return WarningStyle.Render("⚠ ") + msg
+}
+
+func Fail(msg string) string {
+	return ErrorStyle.Render("✗ ") + msg
+}
+
+func Tip(msg string) string {
+	return InfoStyle.Render("💡 ") + SubtitleStyle.Render(msg)
 }
