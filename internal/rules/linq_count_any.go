@@ -4,7 +4,7 @@ import (
 	"regexp"
 )
 
-// LinqCountAny converts Count() comparisons to Any() for better performance
+
 type LinqCountAny struct {
 	BaseVersionedRule
 }
@@ -27,35 +27,35 @@ func (r *LinqCountAny) Apply(content string) (string, bool) {
 	changed := false
 	result := content
 
-	// Pattern 1: .Count() > 0 -> .Any()
+	
 	pattern1 := regexp.MustCompile(`\.Count\(\)\s*>\s*0`)
 	if pattern1.MatchString(result) {
 		result = pattern1.ReplaceAllString(result, ".Any()")
 		changed = true
 	}
 
-	// Pattern 2: .Count() >= 1 -> .Any()
+	
 	pattern2 := regexp.MustCompile(`\.Count\(\)\s*>=\s*1`)
 	if pattern2.MatchString(result) {
 		result = pattern2.ReplaceAllString(result, ".Any()")
 		changed = true
 	}
 
-	// Pattern 3: .Count() != 0 -> .Any()
+	
 	pattern3 := regexp.MustCompile(`\.Count\(\)\s*!=\s*0`)
 	if pattern3.MatchString(result) {
 		result = pattern3.ReplaceAllString(result, ".Any()")
 		changed = true
 	}
 
-	// Pattern 4: .Count() == 0 -> !.Any() - need to handle negation carefully
+	
 	pattern4 := regexp.MustCompile(`(\w+)\.Count\(\)\s*==\s*0`)
 	if pattern4.MatchString(result) {
 		result = pattern4.ReplaceAllString(result, "!${1}.Any()")
 		changed = true
 	}
 
-	// Pattern 5: .Count() < 1 -> !.Any()
+	
 	pattern5 := regexp.MustCompile(`(\w+)\.Count\(\)\s*<\s*1`)
 	if pattern5.MatchString(result) {
 		result = pattern5.ReplaceAllString(result, "!${1}.Any()")

@@ -7,16 +7,16 @@ import (
 )
 
 var (
-	// Colors - Modern, clean palette
-	Primary   = lipgloss.Color("#6366F1") // Indigo
-	Secondary = lipgloss.Color("#10B981") // Emerald
-	Warning   = lipgloss.Color("#F59E0B") // Amber
-	Error     = lipgloss.Color("#EF4444") // Red
-	Muted     = lipgloss.Color("#9CA3AF") // Gray
-	Accent    = lipgloss.Color("#8B5CF6") // Violet
-	Info      = lipgloss.Color("#3B82F6") // Blue
+	
+	Primary   = lipgloss.Color("#6366F1") 
+	Secondary = lipgloss.Color("#10B981") 
+	Warning   = lipgloss.Color("#F59E0B") 
+	Error     = lipgloss.Color("#EF4444") 
+	Muted     = lipgloss.Color("#9CA3AF") 
+	Accent    = lipgloss.Color("#8B5CF6") 
+	Info      = lipgloss.Color("#3B82F6") 
 
-	// Styles
+	
 	TitleStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(Primary)
@@ -48,7 +48,7 @@ var (
 			Foreground(Accent).
 			Bold(true)
 
-	// Box and container styles
+	
 	BoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(Primary).
@@ -68,7 +68,7 @@ var (
 			Foreground(lipgloss.Color("#EF4444")).
 			Background(lipgloss.Color("#450A0A"))
 
-	// Status indicator styles
+	
 	DotSuccess = lipgloss.NewStyle().Foreground(Secondary).Render("●")
 	DotWarning = lipgloss.NewStyle().Foreground(Warning).Render("●")
 	DotError   = lipgloss.NewStyle().Foreground(Error).Render("●")
@@ -125,7 +125,7 @@ func ProgressBar(current, total int, width int) string {
 	return InfoStyle.Render(bar) + SubtitleStyle.Render(" "+fmt.Sprintf("%d/%d", current, total))
 }
 
-// Quick helper for common outputs
+
 func Success(msg string) string {
 	return SuccessStyle.Render("✓ ") + msg
 }

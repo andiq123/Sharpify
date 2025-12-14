@@ -1,6 +1,6 @@
 package rules
 
-// CSharpVersion represents a C# language version
+
 type CSharpVersion int
 
 const (
@@ -14,7 +14,7 @@ const (
 	CSharp13
 )
 
-// String returns the version as a string
+
 func (v CSharpVersion) String() string {
 	switch v {
 	case CSharp6:
@@ -38,7 +38,7 @@ func (v CSharpVersion) String() string {
 	}
 }
 
-// DotNetVersion returns the corresponding .NET version
+
 func (v CSharpVersion) DotNetVersion() string {
 	switch v {
 	case CSharp6:
@@ -62,14 +62,14 @@ func (v CSharpVersion) DotNetVersion() string {
 	}
 }
 
-// VersionedRule extends Rule with version information
+
 type VersionedRule interface {
 	Rule
 	MinVersion() CSharpVersion
-	IsSafe() bool // Whether the rule is guaranteed not to break logic
+	IsSafe() bool 
 }
 
-// BaseVersionedRule provides common versioned rule functionality
+
 type BaseVersionedRule struct {
 	minVersion CSharpVersion
 	safe       bool

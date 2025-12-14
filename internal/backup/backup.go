@@ -7,13 +7,13 @@ import (
 	"time"
 )
 
-// Manager handles file backups
+
 type Manager struct {
 	backupDir string
 	enabled   bool
 }
 
-// New creates a new backup manager
+
 func New(projectPath string) *Manager {
 	timestamp := time.Now().Format("20060102-150405")
 	backupDir := filepath.Join(projectPath, ".sharpify-backup", timestamp)
@@ -24,43 +24,43 @@ func New(projectPath string) *Manager {
 	}
 }
 
-// SetEnabled enables or disables backups
+
 func (m *Manager) SetEnabled(enabled bool) {
 	m.enabled = enabled
 }
 
-// IsEnabled returns whether backups are enabled
+
 func (m *Manager) IsEnabled() bool {
 	return m.enabled
 }
 
-// BackupDir returns the backup directory path
+
 func (m *Manager) BackupDir() string {
 	return m.backupDir
 }
 
-// Backup creates a backup of the given file
+
 func (m *Manager) Backup(filePath string, content string) error {
 	if !m.enabled {
 		return nil
 	}
 
-	// Create backup directory if needed
+	
 	if err := os.MkdirAll(m.backupDir, 0755); err != nil {
 		return fmt.Errorf("failed to create backup directory: %w", err)
 	}
 
-	// Get relative path for backup
+	
 	absPath, err := filepath.Abs(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to get absolute path: %w", err)
 	}
 
-	// Create backup file path (flatten the structure a bit)
+	
 	backupName := filepath.Base(absPath)
 	backupPath := filepath.Join(m.backupDir, backupName)
 
-	// Handle duplicate filenames
+	
 	counter := 1
 	for {
 		if _, err := os.Stat(backupPath); os.IsNotExist(err) {
@@ -72,7 +72,7 @@ func (m *Manager) Backup(filePath string, content string) error {
 		counter++
 	}
 
-	// Write backup
+	
 	if err := os.WriteFile(backupPath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("failed to write backup: %w", err)
 	}
@@ -80,9 +80,9 @@ func (m *Manager) Backup(filePath string, content string) error {
 	return nil
 }
 
-// Restore restores all files from backup
+
 func (m *Manager) Restore() error {
-	// List backup files
+	
 	entries, err := os.ReadDir(m.backupDir)
 	if err != nil {
 		return fmt.Errorf("failed to read backup directory: %w", err)
@@ -99,8 +99,8 @@ func (m *Manager) Restore() error {
 			return fmt.Errorf("failed to read backup file %s: %w", entry.Name(), err)
 		}
 
-		// Note: This simple restore doesn't track original paths
-		// A more sophisticated implementation would store metadata
+		
+		
 		fmt.Printf("Backup available: %s\n", backupPath)
 		_ = content
 	}
@@ -108,7 +108,7 @@ func (m *Manager) Restore() error {
 	return nil
 }
 
-// Cleanup removes old backups
+
 func (m *Manager) Cleanup(keepDays int) error {
 	baseDir := filepath.Dir(m.backupDir)
 

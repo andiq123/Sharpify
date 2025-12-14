@@ -6,30 +6,30 @@ import (
 	"strings"
 )
 
-// FileInfo holds information about a C# file
+
 type FileInfo struct {
 	Path    string
 	Content string
 }
 
-// Scanner defines the interface for file scanning (Interface Segregation)
+
 type Scanner interface {
 	Scan(root string) ([]FileInfo, error)
 }
 
-// CSharpScanner scans for C# files (Single Responsibility)
+
 type CSharpScanner struct {
 	extensions []string
 }
 
-// New creates a new CSharpScanner
+
 func New() *CSharpScanner {
 	return &CSharpScanner{
 		extensions: []string{".cs"},
 	}
 }
 
-// Scan walks the directory tree and finds all C# files
+
 func (s *CSharpScanner) Scan(root string) ([]FileInfo, error) {
 	var files []FileInfo
 
@@ -39,7 +39,7 @@ func (s *CSharpScanner) Scan(root string) ([]FileInfo, error) {
 		}
 
 		if info.IsDir() {
-			// Skip common non-source directories
+			
 			name := info.Name()
 			if name == "bin" || name == "obj" || name == ".git" || name == "node_modules" {
 				return filepath.SkipDir

@@ -10,7 +10,7 @@ import (
 	"github.com/andiq123/sharpify/internal/transformer"
 )
 
-// Config holds CLI configuration
+
 type Config struct {
 	Path      string
 	DryRun    bool
@@ -19,24 +19,24 @@ type Config struct {
 	Recursive bool
 }
 
-// Run executes the main CLI logic
+
 func Run(cfg Config) error {
-	// Resolve path
+	
 	path, err := filepath.Abs(cfg.Path)
 	if err != nil {
 		return fmt.Errorf("invalid path: %w", err)
 	}
 
-	// Check if path exists
+	
 	info, err := os.Stat(path)
 	if err != nil {
 		return fmt.Errorf("path not found: %w", err)
 	}
 
-	// Create scanner
+	
 	s := scanner.New()
 
-	// Scan for C# files
+	
 	var files []scanner.FileInfo
 	if info.IsDir() {
 		files, err = s.Scan(path)
@@ -58,10 +58,10 @@ func Run(cfg Config) error {
 
 	fmt.Printf("Found %d C# file(s)\n", len(files))
 
-	// Create rule registry
+	
 	registry := transformer.NewRegistry()
 
-	// Select rules
+	
 	var rules = registry.All()
 	if len(cfg.Rules) > 0 {
 		rules = registry.GetByNames(cfg.Rules)
@@ -75,13 +75,13 @@ func Run(cfg Config) error {
 		fmt.Println()
 	}
 
-	// Create transformer
+	
 	t := transformer.New(rules)
 
-	// Transform files
+	
 	results := t.TransformAll(files)
 
-	// Process results
+	
 	changedCount := 0
 	for _, result := range results {
 		if !result.Changed {
@@ -121,7 +121,7 @@ func modeText(dryRun bool) string {
 	return "modified"
 }
 
-// ListRules prints all available rules
+
 func ListRules() {
 	registry := transformer.NewRegistry()
 	rules := registry.All()

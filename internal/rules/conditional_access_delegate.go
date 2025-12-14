@@ -4,7 +4,7 @@ import (
 	"regexp"
 )
 
-// ConditionalAccessDelegate converts null-check delegate invocation to conditional access
+
 type ConditionalAccessDelegate struct {
 	BaseVersionedRule
 }
@@ -27,8 +27,8 @@ func (r *ConditionalAccessDelegate) Apply(content string) (string, bool) {
 	changed := false
 	result := content
 
-	// Pattern 1: if (handler != null) handler(args);
-	// Go doesn't support backreferences, so we match and verify manually
+	
+	
 	pattern1 := regexp.MustCompile(`if\s*\(\s*(\w+)\s*!=\s*null\s*\)\s*(\w+)\s*\(([^)]*)\)\s*;`)
 	matches := pattern1.FindAllStringSubmatchIndex(result, -1)
 
@@ -45,7 +45,7 @@ func (r *ConditionalAccessDelegate) Apply(content string) (string, bool) {
 		}
 	}
 
-	// Pattern 2: if (handler != null) { handler(args); }
+	
 	pattern2 := regexp.MustCompile(`if\s*\(\s*(\w+)\s*!=\s*null\s*\)\s*\{\s*(\w+)\s*\(([^)]*)\)\s*;\s*\}`)
 	matches2 := pattern2.FindAllStringSubmatchIndex(result, -1)
 
@@ -62,7 +62,7 @@ func (r *ConditionalAccessDelegate) Apply(content string) (string, bool) {
 		}
 	}
 
-	// Pattern 3: Multi-line if (handler != null) \n handler(args);
+	
 	pattern3 := regexp.MustCompile(`(?m)if\s*\(\s*(\w+)\s*!=\s*null\s*\)\s*\n\s*(\w+)\s*\(([^)]*)\)\s*;`)
 	matches3 := pattern3.FindAllStringSubmatchIndex(result, -1)
 
@@ -79,7 +79,7 @@ func (r *ConditionalAccessDelegate) Apply(content string) (string, bool) {
 		}
 	}
 
-	// Pattern 4: if (X != null) X.Invoke(args);
+	
 	pattern4 := regexp.MustCompile(`if\s*\(\s*(\w+)\s*!=\s*null\s*\)\s*(\w+)\.Invoke\s*\(([^)]*)\)\s*;`)
 	matches4 := pattern4.FindAllStringSubmatchIndex(result, -1)
 

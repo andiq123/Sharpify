@@ -4,7 +4,7 @@ import (
 	"regexp"
 )
 
-// ThrowExpression converts null-check-throw-assign patterns to throw expressions
+
 type ThrowExpression struct {
 	BaseVersionedRule
 }
@@ -27,20 +27,20 @@ func (r *ThrowExpression) Apply(content string) (string, bool) {
 	changed := false
 	result := content
 
-	// Pattern: if (x == null) throw new ArgumentNullException(nameof(x)); followed by _field = x;
-	// Go doesn't support backreferences, so we match and verify manually
+	
+	
 	pattern1 := regexp.MustCompile(`(?m)if\s*\(\s*(\w+)\s*==\s*null\s*\)\s*\{?\s*throw\s+new\s+ArgumentNullException\s*\(\s*nameof\s*\(\s*(\w+)\s*\)\s*\)\s*;\s*\}?\s*\n\s*(_?\w+)\s*=\s*(\w+)\s*;`)
 	matches := pattern1.FindAllStringSubmatchIndex(result, -1)
 
-	// Process in reverse to preserve indices
+	
 	for i := len(matches) - 1; i >= 0; i-- {
 		match := matches[i]
-		varName := result[match[2]:match[3]]     // first capture (x in null check)
-		nameofVar := result[match[4]:match[5]]   // nameof argument
-		fieldName := result[match[6]:match[7]]   // _field
-		assignedVar := result[match[8]:match[9]] // x in assignment
+		varName := result[match[2]:match[3]]     
+		nameofVar := result[match[4]:match[5]]   
+		fieldName := result[match[6]:match[7]]   
+		assignedVar := result[match[8]:match[9]] 
 
-		// Verify all variable references are consistent
+		
 		if varName == nameofVar && varName == assignedVar {
 			replacement := fieldName + " = " + varName + " ?? throw new ArgumentNullException(nameof(" + varName + "));"
 			result = result[:match[0]] + replacement + result[match[1]:]
@@ -48,7 +48,7 @@ func (r *ThrowExpression) Apply(content string) (string, bool) {
 		}
 	}
 
-	// Pattern 2: if (x == null) throw new ArgumentNullException("x"); followed by _field = x;
+	
 	pattern2 := regexp.MustCompile(`(?m)if\s*\(\s*(\w+)\s*==\s*null\s*\)\s*\{?\s*throw\s+new\s+ArgumentNullException\s*\(\s*"(\w+)"\s*\)\s*;\s*\}?\s*\n\s*(_?\w+)\s*=\s*(\w+)\s*;`)
 	matches2 := pattern2.FindAllStringSubmatchIndex(result, -1)
 
@@ -66,7 +66,7 @@ func (r *ThrowExpression) Apply(content string) (string, bool) {
 		}
 	}
 
-	// Pattern 3: Handle this.field = value pattern
+	
 	pattern3 := regexp.MustCompile(`(?m)if\s*\(\s*(\w+)\s*==\s*null\s*\)\s*\{?\s*throw\s+new\s+ArgumentNullException\s*\(\s*nameof\s*\(\s*(\w+)\s*\)\s*\)\s*;\s*\}?\s*\n\s*(this\.)?(\w+)\s*=\s*(\w+)\s*;`)
 	matches3 := pattern3.FindAllStringSubmatchIndex(result, -1)
 

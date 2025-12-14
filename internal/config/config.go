@@ -93,7 +93,7 @@ func (c *Config) SetVersion(v rules.CSharpVersion) {
 	}
 }
 
-// IsRuleDisabled checks if a rule is in the disabled list
+
 func (c *Config) IsRuleDisabled(name string) bool {
 	for _, r := range c.DisabledRules {
 		if r == name {
@@ -103,7 +103,7 @@ func (c *Config) IsRuleDisabled(name string) bool {
 	return false
 }
 
-// SetRuleDisabled adds or removes a rule from the disabled list
+
 func (c *Config) SetRuleDisabled(name string, disabled bool) {
 	if disabled {
 		if !c.IsRuleDisabled(name) {
@@ -120,7 +120,7 @@ func (c *Config) SetRuleDisabled(name string, disabled bool) {
 	}
 }
 
-// GetEnabledRules returns the list of rules filtering out disabled ones
+
 func (c *Config) GetEnabledRules(allRules []rules.Rule) []rules.Rule {
 	result := make([]rules.Rule, 0, len(allRules))
 	for _, r := range allRules {

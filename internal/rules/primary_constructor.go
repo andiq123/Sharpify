@@ -26,22 +26,22 @@ func (r *PrimaryConstructor) Description() string {
 func (r *PrimaryConstructor) Apply(content string) (string, bool) {
 	changed := false
 
-	// Match class declaration with optional generic params, inheritance, and interfaces
-	// Group 1: Full class declaration (everything before {)
-	// Group 2: Class/struct/record keyword and name (including generics)
-	// Group 3: Just the name
-	// Group 4: Optional inheritance clause
+	
+	
+	
+	
+	
 	classPattern := regexp.MustCompile(`(?m)((?:public|internal|private|protected)\s+(?:sealed\s+|abstract\s+|partial\s+)*(?:class|struct|record)\s+(\w+)(?:<[^>]+>)?)((\s*:\s*[^{]+)?)\s*\{`)
 
 	matches := classPattern.FindAllStringSubmatchIndex(content, -1)
 
 	for i := len(matches) - 1; i >= 0; i-- {
 		match := matches[i]
-		classNameAndKeyword := content[match[2]:match[3]] // e.g., "public class TenantService"
-		className := content[match[4]:match[5]]           // e.g., "TenantService"
+		classNameAndKeyword := content[match[2]:match[3]] 
+		className := content[match[4]:match[5]]           
 		inheritance := ""
 		if match[6] != -1 && match[7] != -1 {
-			inheritance = strings.TrimSpace(content[match[6]:match[7]]) // e.g., ": ITenantService"
+			inheritance = strings.TrimSpace(content[match[6]:match[7]]) 
 		}
 		openBracePos := match[1] - 1
 
@@ -119,7 +119,7 @@ func (r *PrimaryConstructor) Apply(content string) (string, bool) {
 
 		newClassBody = regexp.MustCompile(`\n{3,}`).ReplaceAllString(newClassBody, "\n\n")
 
-		// Build new class declaration: "public class Foo(params) : IBar"
+		
 		newClassDecl := classNameAndKeyword + "(" + params + ")"
 		if inheritance != "" {
 			newClassDecl += " " + inheritance

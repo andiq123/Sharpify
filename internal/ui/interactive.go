@@ -136,7 +136,7 @@ func (im *InteractiveMode) runQuick() {
 		return
 	}
 
-	// Use all enabled safe rules
+	
 	allRules := im.registry.GetByVersion(im.config.GetVersion(), im.config.SafeOnly)
 	enabledRules := im.config.GetEnabledRules(allRules)
 
@@ -161,7 +161,7 @@ func (im *InteractiveMode) runCustom() {
 		return
 	}
 
-	// Show rule selector
+	
 	allRules := im.registry.GetByVersion(im.config.GetVersion(), false)
 	selectedRules := im.selectRules(allRules)
 
@@ -268,7 +268,7 @@ func (im *InteractiveMode) selectRules(allRules []rules.Rule) []rules.Rule {
 		Value(&selectedNames).
 		Run()
 
-	// Update config
+	
 	for _, r := range allRules {
 		isSelected := false
 		for _, name := range selectedNames {
@@ -301,7 +301,7 @@ func (im *InteractiveMode) applyTransformations(workingDir string, files []scann
 		return
 	}
 
-	// Show summary
+	
 	fmt.Println()
 	fmt.Println(Divider())
 	fmt.Println(TitleStyle.Render(fmt.Sprintf("📝 %d file(s) to update", len(changed))))
@@ -317,7 +317,7 @@ func (im *InteractiveMode) applyTransformations(workingDir string, files []scann
 
 	fmt.Println()
 
-	// Confirm
+	
 	var confirm bool
 	err := huh.NewConfirm().
 		Title("Apply these changes?").
@@ -331,7 +331,7 @@ func (im *InteractiveMode) applyTransformations(workingDir string, files []scann
 		return
 	}
 
-	// Backup if enabled
+	
 	if im.config.BackupEnabled {
 		im.backupMgr = backup.New(workingDir)
 		for _, r := range changed {
@@ -340,7 +340,7 @@ func (im *InteractiveMode) applyTransformations(workingDir string, files []scann
 		fmt.Println(InfoStyle.Render("📦 Backup created: ") + SubtitleStyle.Render(im.backupMgr.BackupDir()))
 	}
 
-	// Apply changes
+	
 	for _, r := range changed {
 		_ = os.WriteFile(r.File.Path, []byte(r.NewContent), 0644)
 	}
@@ -418,7 +418,7 @@ func (im *InteractiveMode) showRules() {
 			continue
 		}
 
-		// Version header with count
+		
 		isActive := v <= im.config.GetVersion()
 		header := fmt.Sprintf("%s (%d rules)", v.String(), len(ruleList))
 		if isActive {

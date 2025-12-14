@@ -13,7 +13,7 @@ import (
 var version = "1.0.0"
 
 func main() {
-	// Define flags
+	
 	batch := flag.Bool("batch", false, "Run in batch mode (non-interactive)")
 	batchShort := flag.Bool("b", false, "Run in batch mode (non-interactive)")
 	dryRun := flag.Bool("dry-run", false, "Preview changes without modifying files")
@@ -42,13 +42,13 @@ func main() {
 		return
 	}
 
-	// Batch mode (non-interactive)
+	
 	if *batch || *batchShort {
 		runBatch(dryRun, rulesFlag, verbose)
 		return
 	}
 
-	// Default: Interactive mode
+	
 	im := ui.NewInteractive()
 	if err := im.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

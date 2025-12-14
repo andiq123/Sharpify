@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// ThrowHelper converts null checks to modern throw helper methods
+
 type ThrowHelper struct {
 	BaseVersionedRule
 }
@@ -28,8 +28,8 @@ func (r *ThrowHelper) Apply(content string) (string, bool) {
 	changed := false
 	result := content
 
-	// Pattern: if (x is null) throw new ArgumentNullException(nameof(x));
-	// Go regex doesn't support backreferences, so we match and verify manually
+	
+	
 	pattern1 := regexp.MustCompile(`(?m)^\s*if\s*\(\s*(\w+)\s+is\s+null\s*\)\s*\{?\s*\n?\s*throw\s+new\s+ArgumentNullException\s*\(\s*nameof\s*\(\s*(\w+)\s*\)\s*\)\s*;\s*\}?`)
 	matches := pattern1.FindAllStringSubmatchIndex(result, -1)
 
@@ -38,7 +38,7 @@ func (r *ThrowHelper) Apply(content string) (string, bool) {
 		varName1 := result[match[2]:match[3]]
 		varName2 := result[match[4]:match[5]]
 
-		// Verify both variable names are the same
+		
 		if varName1 == varName2 {
 			replacement := "        ArgumentNullException.ThrowIfNull(" + varName1 + ");"
 			result = result[:match[0]] + replacement + result[match[1]:]
@@ -46,7 +46,7 @@ func (r *ThrowHelper) Apply(content string) (string, bool) {
 		}
 	}
 
-	// Pattern 2: if (x == null) throw new ArgumentNullException(nameof(x)); (standalone)
+	
 	pattern2 := regexp.MustCompile(`(?m)^\s*if\s*\(\s*(\w+)\s*==\s*null\s*\)\s*\{?\s*\n?\s*throw\s+new\s+ArgumentNullException\s*\(\s*nameof\s*\(\s*(\w+)\s*\)\s*\)\s*;\s*\}?`)
 	matches2 := pattern2.FindAllStringSubmatchIndex(result, -1)
 
@@ -56,12 +56,12 @@ func (r *ThrowHelper) Apply(content string) (string, bool) {
 		varName2 := result[match[4]:match[5]]
 		matchEnd := match[1]
 
-		// Verify both variable names are the same
+		
 		if varName1 != varName2 {
 			continue
 		}
 
-		// Check if there's an assignment on the next line (to avoid conflict with throw-expression)
+		
 		restOfContent := result[matchEnd:]
 		assignmentPattern := regexp.MustCompile(`^\s*\n\s*\w+\s*=\s*` + regexp.QuoteMeta(varName1))
 		if !assignmentPattern.MatchString(restOfContent) {
@@ -71,7 +71,7 @@ func (r *ThrowHelper) Apply(content string) (string, bool) {
 		}
 	}
 
-	// Pattern 3: if (string.IsNullOrEmpty(x)) throw new ArgumentException(..., nameof(x));
+	
 	pattern3 := regexp.MustCompile(`(?m)^\s*if\s*\(\s*string\.IsNullOrEmpty\s*\(\s*(\w+)\s*\)\s*\)\s*\{?\s*\n?\s*throw\s+new\s+Argument(?:Null)?Exception\s*\([^)]*nameof\s*\(\s*(\w+)\s*\)[^)]*\)\s*;\s*\}?`)
 	matches3 := pattern3.FindAllStringSubmatchIndex(result, -1)
 
@@ -87,7 +87,7 @@ func (r *ThrowHelper) Apply(content string) (string, bool) {
 		}
 	}
 
-	_ = strings.TrimSpace // Silence unused import warning
+	_ = strings.TrimSpace 
 
 	return result, changed
 }
